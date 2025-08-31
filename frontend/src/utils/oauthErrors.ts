@@ -12,6 +12,14 @@ export interface OAuthError {
   userMessage: string;
 }
 
+// Interface para objetos de erro que podem vir do OAuth
+interface ErrorObject {
+  error?: string;
+  code?: string;
+  message?: string;
+  error_description?: string;
+}
+
 // Códigos de erro comuns do OAuth
 export const OAUTH_ERROR_CODES = {
   ACCESS_DENIED: 'access_denied',
@@ -32,8 +40,9 @@ export const OAUTH_ERROR_CODES = {
 export const mapOAuthError = (error: unknown): OAuthError => {
   // Se o erro já é um objeto estruturado
   if (error && typeof error === 'object') {
-    const errorCode = error.error || error.code || error.message;
-    const errorMessage = error.error_description || error.message || 'Erro desconhecido';
+    const errorObj = error as ErrorObject;
+    const errorCode = errorObj.error || errorObj.code || errorObj.message;
+    const errorMessage = errorObj.error_description || errorObj.message || 'Erro desconhecido';
 
     switch (errorCode) {
       case OAUTH_ERROR_CODES.ACCESS_DENIED:
@@ -154,7 +163,7 @@ export const mapOAuthError = (error: unknown): OAuthError => {
  * Verifica se um erro é recuperável (o usuário pode tentar novamente)
  */
 export const isRecoverableError = (errorCode: string): boolean => {
-  const recoverableErrors = [
+  const recoverableErrors: string[] = [
     OAUTH_ERROR_CODES.NETWORK_ERROR,
     OAUTH_ERROR_CODES.TIMEOUT,
     OAUTH_ERROR_CODES.SERVER_ERROR,
@@ -162,7 +171,7 @@ export const isRecoverableError = (errorCode: string): boolean => {
     OAUTH_ERROR_CODES.POPUP_BLOCKED
   ];
   
-  return recoverableErrors.includes(errorCode as typeof OAUTH_ERROR_CODES[keyof typeof OAUTH_ERROR_CODES]);
+  return recoverableErrors.includes(errorCode);
 };
 
 /**

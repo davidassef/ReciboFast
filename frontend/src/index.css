@@ -1,9 +1,7 @@
+/* Estilos globais do ReciboFast */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Importar animações globais */
-@import './styles/animations.css';
 
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";

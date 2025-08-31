@@ -10,6 +10,7 @@ import {
   Receipt, 
   FileText, 
   CreditCard, 
+  PenTool,
   User,
   LogOut 
 } from 'lucide-react';
@@ -47,6 +48,12 @@ const tabs: TabItem[] = [
     label: 'Recibos',
     icon: CreditCard,
     path: '/recibos'
+  },
+  {
+    id: 'assinaturas',
+    label: 'Assinaturas',
+    icon: PenTool,
+    path: '/assinaturas'
   },
   {
     id: 'perfil',

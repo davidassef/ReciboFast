@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -16,6 +17,7 @@ import Receitas from './pages/Receitas';
 import Contratos from './pages/Contratos';
 import Recibos from './pages/Recibos';
 import Perfil from './pages/Perfil';
+import SignaturesPage from './pages/SignaturesPage';
 import DesignSystemTest from './pages/DesignSystemTest';
 
 function App() {
@@ -39,12 +41,16 @@ function App() {
             <Route path="/receitas" element={<Receitas />} />
             <Route path="/contratos" element={<Contratos />} />
             <Route path="/recibos" element={<Recibos />} />
+            <Route path="/assinaturas" element={<SignaturesPage />} />
             <Route path="/perfil" element={<Perfil />} />
           </Route>
         </Routes>
         
         {/* PWA Notifications */}
         <PWANotification />
+        
+        {/* Toast Notifications */}
+        <Toaster position="top-right" richColors />
       </Router>
     </AuthProvider>
   );
