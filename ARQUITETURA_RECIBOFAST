@@ -1,0 +1,373 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: Documento de arquitetura inicial do projeto ReciboFast
+# Data: 29-08-2025
+
+# ARQUITETURA RECIBOFAST — Documento Inicial
+
+Aplicativo PWA para gestão de aluguéis e geração rápida de recibos, com frontend em Angular + Ionic + TailwindCSS e backend em Golang, utilizando Supabase (Postgres + Storage + Auth com Google) para persistência e autenticação.
+
+## Objetivos
+- Agilizar a emissão de recibos para aluguéis e outras receitas.
+- Controlar recebimentos (baixas) e histórico financeiro por contrato/recebedor.
+- Permitir assinatura personalizada (PNG com transparência) nos recibos, proporcional e realista.
+- Operar como PWA com excelente performance e compatibilidade ampla (mobile-first).
+
+## Checklist de requisitos (origem do pedido)
+- Gerenciar receitas vindas de aluguéis e outras fontes.
+- Dar baixa em renda já recebida.
+- Gerar recibos a qualquer momento.
+- Criar e adicionar assinatura própria no recibo.
+- Aceitar PNG de assinatura sem fundo e posicionar proporcionalmente.
+- Frontend: Angular + Ionic + Tailwind, UI/UX modernas, tabs estilo WhatsApp, transições suaves e lazy loading.
+- Backend: Golang de alto desempenho.
+- Banco: Supabase (DB, Storage, Auth), incluindo Google Auth.
+- PWA para evitar publicação em stores e maximizar compatibilidade.
+
+## Visão arquitetural (alto nível)
+- Cliente (PWA Angular/Ionic) comunica-se com:
+  - Supabase Auth para login (incl. Google) e obtenção de JWT.
+  - API Backend (Go) para regras de negócio, emissão de PDFs (opcional) e operações que exigem servidor.
+  - Supabase Storage para envio/consulta de mídia (assinaturas PNG, PDFs opcionais).
+- Banco de Dados: Supabase Postgres com RLS (Row Level Security) e políticas por usuário.
+- Offline-first: IndexedDB para cache de dados críticos e fila de sincronização; Service Worker com Workbox para cache de assets e APIs.
+
+## Decisões de arquitetura
+- Autenticação: Supabase Auth no frontend; backend valida JWT via chave pública do Supabase (middleware). Evita duplicar identidade.
+- Geração de PDF: padrão cliente-side (jsPDF/pdf-lib) para funcionar offline; backend oferece rota de geração server-side (gofpdf/pdfcpu) como fallback/alta fidelidade.
+- Armazenamento de assinaturas: Supabase Storage em bucket privado com URLs assinadas temporárias; metadados no Postgres.
+- Padrão API: REST JSON, idempotência nas operações de baixa, versionamento via /api/v1.
+- Escalabilidade: Backend stateless; usar Supabase como serviço gerenciado; CDN para assets do PWA.
+
+## Frontend (Angular + Ionic + Tailwind)
+- Estrutura proposta
+  - src/app/
+    - core/ (guards, interceptors, config, auth)
+    - pages/ (tabs e telas: dashboard, receitas, contratos, recibos, perfil)
+    - components/ (UI reutilizável)
+    - services/ (chamadas API, storage local, assinatura)
+    - state/ (NgRx/Signals opcionais para estados globais)
+    - utils/ (formatadores, validações)
+    - pwa/ (service worker, estratégia de cache)
+- Navegação
+  - Tabs inferiores (estilo WhatsApp/Telegram) com Ionic Tabs.
+  - Lazy loading por módulo de página, animações suaves.
+- PWA/Offline
+  - Angular Service Worker + Workbox (custom) para cache de assets e estratégias de Stale-While-Revalidate.
+  - IndexedDB (Dexie) para dados locais e fila de sincronização (Background Sync quando disponível).
+- Geração de recibo
+  - Template responsivo com dados preenchidos; assinatura PNG aplicada mantendo proporção (altura/width máx. do campo de assinatura).
+  - Exportar PDF (cliente) e opcionalmente subir ao Storage.
+- Acessibilidade e UX
+  - Alto contraste, tamanhos de toque adequados, feedback visual, skeletons e loaders.
+
+## Backend (Golang)
+- Estrutura (sugestão)
+  - /cmd/api (main)
+  - /internal/
+    - config (env, supabase url/keys, CORS)
+    - http (routers, middlewares)
+    - handlers (recibos, receitas, assinaturas, contratos, auth-check)
+    - services (regras: baixas, cálculo, geração PDF server)
+    - repositories (acesso Postgres via pgx)
+    - storage (supabase storage SDK/REST)
+    - models (DTOs/entidades)
+    - logging (zap/logrus)
+- API
+  - Autorização: Bearer JWT (Supabase). Middleware valida e injeta user_id.
+  - Idempotência: header Idempotency-Key para POSTs sensíveis (baixas, recibos).
+  - Observabilidade: logs estruturados, request-id, timing.
+
+## Banco de Dados (Supabase Postgres)
+- Tabelas principais (prefixo rf_)
+  - rf_profiles (id uuid PK refs auth.users, nome, documento, created_at)
+  - rf_payers (id, owner_id, nome, documento, contato)
+  - rf_contracts (id, owner_id, payer_id, descricao, valor_mensal, vencimento_dia, ativo)
+  - rf_incomes (id, owner_id, contract_id NULL, categoria, competencia, valor, status [pendente|pago|parcial], due_date)
+  - rf_payments (id, income_id, valor, pago_em, metodo, obs)
+  - rf_receipts (id, owner_id, income_id, numero, emitido_em, pdf_url NULL, hash)
+  - rf_signatures (id, owner_id, file_path, width_px, height_px, created_at)
+  - rf_settings (owner_id PK, timezone, locale, template_padrao)
+- Índices por owner_id e busca por competência/datas.
+- RLS
+  - Todas as tabelas com policy owner_id = auth.uid().
+  - Buckets Storage privados com política por owner_id em metadados (storage.objects) ou paths por usuário.
+
+## Contratos de API (v1 — esboço)
+- Auth
+  - GET /api/v1/me → perfil do usuário (derivado do JWT e rf_profiles)
+- Payers/Contratos
+  - GET/POST /api/v1/payers
+  - GET/POST /api/v1/contracts
+- Receitas e Baixas
+  - GET/POST /api/v1/incomes
+  - POST /api/v1/incomes/{id}/payments (baixa) — Idempotency-Key suportado
+- Recibos
+  - POST /api/v1/receipts (body: income_id, options) → retorna metadados e, se server-side, url/pdf
+  - GET /api/v1/receipts/{id}
+- Assinaturas
+  - GET /api/v1/signatures
+  - POST /api/v1/signatures (recebe URL assinada do Storage ou upload multipart para proxy seguro)
+
+Exemplos de formatos (resumo)
+- Income
+  - { id, owner_id, contract_id, categoria, competencia: "2025-08", valor: 1000.00, status, due_date }
+- Receipt
+  - { id, income_id, numero, emitido_em, pdf_url?, hash }
+
+## Fluxos principais
+- Login (Google/Supabase) → JWT
+- Cadastro de pagador e contrato (opcional) → criação de receitas recorrentes
+- Lançar receita avulsa ou recorrente
+- Dar baixa total/parcial em receita
+- Gerar recibo a partir de uma receita (paga ou no ato) com assinatura aplicada
+- Upload/seleção de assinatura PNG (fundo transparente), com preview e ajuste de escala
+
+## Fluxo de funcionamento do app
+1) Onboarding e login via Supabase (Google/Email) → JWT salvo com expiração.
+2) Configurações iniciais: timezone, dados do emissor, template padrão do recibo.
+3) Cadastro de pagadores e contratos (opcional) ou lançamento de receitas avulsas.
+4) Lançamento de receitas (valor, competência, vencimento) — offline permitido (IndexedDB).
+5) Recebimento: registrar pagamento total/parcial (idempotente) com método e data.
+6) Geração de recibo: selecionar receita/pagamento → pré-visualizar → aplicar assinatura → exportar PDF.
+7) Armazenamento: opcional upload do PDF ao Supabase Storage (URL assinada) e registro do hash do recibo.
+8) Sincronização: quando online, enviar pendências (receitas, pagamentos, assinaturas) via endpoint incremental.
+9) Consulta e compartilhamento: acessar histórico, baixar/compartilhar PDFs, validar QRCode (se habilitado).
+
+## Estrutura do recibo (design moderno em paisagem)
+- Orientação: paisagem (A4 landscape) para distribuição proporcional.
+- Tipografia: título com peso médio (ex.: 600), corpo legível; fonte única embutida (ex.: DejaVuSans) para consistência.
+- Layout (zonas):
+  - Cabeçalho: logotipo (opcional), nome do emissor, CNPJ/CPF, contato, número do recibo, data de emissão.
+  - Seção do pagador: nome, documento, endereço/contato (opcional), contrato vinculado.
+  - Detalhes: descrição/competência, período, valor bruto, descontos/juros, valor líquido.
+  - Assinatura: área dedicada com linha base e assinatura PNG com transparência, proporcional (altura máx. ~20–25% da zona; manter aspect ratio).
+  - Rodapé: QRCode (opcional) com hash/URL de verificação, termos legais e observações.
+- Estilo: grid com espaçamentos consistentes, separadores sutis, alto contraste; uso de sombreamento leve para destaque.
+- Acessibilidade: tamanhos mínimos de fonte, contraste AA; evitar informação apenas por cor.
+
+## Geração e posicionamento de assinatura
+- PNG com transparência é carregado como Image e renderizado no canvas/PDF mantendo aspect ratio.
+- Limites: largura/altura máximas do campo de assinatura; escala automática e ajuste fino manual (slider).
+- Densidade: usar resolução nativa; evitar upscale agressivo; antialiasing.
+- Carimbo de data e número de recibo; opcional QRCode com hash do recibo para verificação.
+
+## PWA e Offline
+- Service Worker: precache de shell, runtime cache para APIs (NetworkFirst com fallback), background sync para POSTs (baixas/recibos).
+- IndexedDB para rascunhos de recibos, receitas pendentes e fila de sincronização.
+- Modo leitura total offline e emissão de recibo local; sincroniza quando online.
+
+## Segurança
+- Nunca expor chaves secretas no cliente; usar apenas anon public key do Supabase no frontend.
+- JWT verificado no backend; clock skew tolerante.
+- RLS rigorosa por owner_id.
+- Buckets privados com URLs assinadas curtas para download; upload via backend ou PostgREST com policy.
+- Validações de entrada rigorosas no backend; limites de tamanho de upload; verificação de MIME e dimensões de PNG.
+
+## Segurança reforçada (criptografia, SQLi e flood)
+- Criptografia de campo (Field-level):
+  - Dados sensíveis (documentos, contatos) cifrados em repouso com AES-256-GCM.
+  - Envelope encryption: chave mestra (KMS/ENV) → derive por usuário com HKDF (salt = user_id) → armazenar key_id e nonce no registro.
+  - No frontend, dados locais (IndexedDB) também cifrados (WebCrypto) com chave derivada do usuário.
+- SQL Injection: queries 100% parametrizadas (pgx), preferencialmente geradas com sqlc; validação de entrada e whitelists para ordenação/campos.
+- Flood/abuso: rate limit por IP e user_id (httprate/ulule-limiter), circuit breaker para o DB, backpressure (503) quando pool saturado.
+- Cabeçalhos de segurança: CORS restrito, CSP, HSTS (se HTTPS), X-Content-Type-Options, Referrer-Policy.
+- Auditoria: log de eventos sensíveis (upload assinatura, geração e download de PDF) com request-id e user_id.
+
+## Desempenho
+- Go backend com pooling de conexões (pgxpool), timeouts e compressão HTTP.
+- Angular com lazy loading, route-level code splitting e Tailwind JIT.
+- Cache de lista de receitas/contratos; paginação e filtros no servidor.
+- JSON: considerar goccy/go-json ou jsoniter para reduzir alocações (validar compatibilidade antes).
+- HTTP server: keep-alive, HTTP/2, gzip/br; definir Read/Write/Idle timeouts, e limitar body size.
+
+## Telemetria e Logs
+- Logs estruturados no backend (request-id, user_id, latência, erros).
+- Métricas básicas (Prometheus/OpenTelemetry) — contadores de recibos emitidos, latência de geração.
+- Amostragem de logs em produção para reduzir I/O em servidores freemium.
+
+## Estrutura de pastas sugerida
+- Frontend
+  - src/app/{core,components,pages,services,state,utils,pwa}
+- Backend ✅ IMPLEMENTADO
+  - cmd/main.go ✅
+  - internal/
+    - context/    → Gerenciamento de contexto de usuário ✅
+    - handlers/   → Controllers (sync endpoint implementado) ✅
+    - httpserver/ → Configuração do servidor HTTP ✅
+    - middleware/ → Autenticação Supabase (JWKS) ✅
+    - models/     → Structs e validações ✅
+    - services/   → Lógica de negócio ✅
+    - config/     → Configurações (env, DB, Supabase) ✅
+    - logging/    → Logs estruturados ✅
+    - repositories/ → Acesso a dados (Supabase) ✅
+- Infra
+  - supabase/ (migrations, policies)
+  - docs/ (diagramas, templates)
+
+**Funcionalidades Backend Implementadas:**
+- ✅ Servidor HTTP com Chi router
+- ✅ Middleware de autenticação JWT Supabase
+- ✅ Validação JWKS automática
+- ✅ Contexto de usuário thread-safe
+- ✅ Logs estruturados com zap
+- ✅ Endpoint /api/v1/sync/changes
+- ✅ Modo debug para desenvolvimento
+- ✅ Conexão com PostgreSQL Supabase
+
+## Variáveis de ambiente (exemplos)
+- FRONTEND
+  - NG_APP_SUPABASE_URL
+  - NG_APP_SUPABASE_ANON_KEY
+  - NG_APP_API_BASE_URL
+- BACKEND
+  - API_PORT, CORS_ORIGINS
+  - SUPABASE_URL, SUPABASE_JWT_PUBLIC_KEY
+  - DB_URL (fornecido pelo Supabase — preferir string de conexão Pooled)
+  - STORAGE_BUCKET_SIGNATURES, STORAGE_BUCKET_RECEIPTS
+
+## Qualidade e boas práticas
+- Nomes descritivos; modularização; evitar duplicação.
+- Linters: ESLint+Prettier (front), golangci-lint (back).
+- Tipagem: TypeScript forte no front; tipos explícitos nos DTOs Go.
+- Testes: Jest/Testing Library no front; Go test no back; cenários de geração de PDF e políticas RLS.
+- Build Go: CGO_ENABLED=0, -ldflags "-s -w"; opcional UPX (avaliar suporte da plataforma de deploy).
+
+## Otimizações para servidores freemium (foco em Golang)
+- Pool de conexões: pgxpool com limites baixos (ex.: max_conns 5–10), idle timeout e healthcheck; usar conexão pooled do Supabase.
+- Consultas: evitar N+1; preferir joins controlados e projeções enxutas (SELECT colunas necessárias). Índices compostos por (owner_id, due_date) e (owner_id, competencia).
+- Caching leve: in-memory com TTL curto (ristretto) para listas frequentes (p.ex. últimos recibos). Budget de memória pequeno (ex.: 16–32MB).
+- Serialização: substituir encoding/json por goccy/go-json ou jsoniter onde for hot-path; medir antes/depois.
+- Rate limit e backpressure: token bucket por IP e por user_id (ulule/limiter). Retornar 429 com Retry-After. Circuit breaker simples para o DB (gobreaker).
+- Tarefas custosas: geração de PDF preferencialmente no cliente; fallback no servidor com gofpdf minimalista, reuso de buffers (sync.Pool) e fontes embutidas; limitar tamanho de imagens e páginas.
+- Uploads de imagem: validar MIME, limitar dimensões (ex.: 1200x400 máx para assinaturas) e tamanho (ex.: 200KB). Opcional reprocessar PNG para reduzir peso preservando alpha.
+- Respostas HTTP: ETag/If-None-Match em GETs; gzip/br; paginação padrão (limit 20) e hard limit (máx 100).
+- Inicialização rápida: evitar reflexão pesada, inicializar clientes de forma lazy; pré-aquecer caches sob demanda.
+- Logs: nível WARN em produção; sample em 1% para INFO/DEBUG.
+- Confiabilidade: idempotência via hash único (unique index) para pagamentos/recibos; sequência global para número de recibos.
+- Timeouts: contexto com deadlines curtos (p.ex. 300–800ms para queries usuais); retries exponenciais limitados.
+
+## Melhorias de modelagem e consultas
+- Sequência global de recibos + prefixo por owner_id para numeração estável e baixa contenção.
+- Vistas materializadas: resumos mensais por owner (receitas, pagos, pendentes) com refresh programado.
+- Colunas derivadas: total_pago em rf_incomes mantido por trigger para evitar somas repetidas.
+
+## Frontend — performance e UX em PWA
+- Angular build com budgets e "optimization": true; remover polyfills não usados.
+- Tailwind com purge agressivo; evitar libs pesadas de UI; preferir componentes Ionic nativos.
+- Imagens e fontes: SVG/WOFF2; ícones por sprite.
+- Estratégias de cache: SWR para listas; NetworkFirst para dados críticos; fallback offline amigável.
+- Progressive enhancement: app funciona sem animações pesadas em devices fracos.
+
+## Operação em freemium
+- CDN para estáticos do PWA; HTTP caching forte (1y, immutable) nos assets versionados.
+- Healthchecks leves; readiness/liveness endpoints baratos.
+- Observabilidade minimalista: métricas essenciais (contadores, erros, p50/p95).
+- Proteção contra abuso: CAPTCHA leve em criações massivas; limites por usuário.
+
+## API de sincronização incremental (esqueleto em Go)
+Exemplo de handler usando chi (ilustrativo):
+
+```go
+// ...imports (net/http, time, encoding/json, ...)
+
+// GET /api/v1/sync/changes?since=RFC3339&limit=100&cursor=...
+func (h *SyncHandler) GetChanges(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    userID := h.Auth.FromContext(ctx) // obtido via middleware que valida JWT Supabase
+
+    sinceStr := r.URL.Query().Get("since")
+    var since time.Time
+    var err error
+    if sinceStr == "" {
+        since = time.Now().Add(-24 * time.Hour)
+    } else {
+        since, err = time.Parse(time.RFC3339, sinceStr)
+        if err != nil { http.Error(w, "invalid since", http.StatusBadRequest); return }
+    }
+    limit := parseLimit(r.URL.Query().Get("limit"), 100)
+    cursor := r.URL.Query().Get("cursor")
+    fields := r.URL.Query().Get("fields") // opcional para projeções
+
+    res, nextCursor, etag, err := h.Svc.FetchChanges(ctx, userID, since, limit, cursor, fields)
+    if err != nil { h.Err(w, err); return }
+
+    if match := r.Header.Get("If-None-Match"); match != "" && match == etag {
+        w.WriteHeader(http.StatusNotModified); return
+    }
+    w.Header().Set("ETag", etag)
+    w.Header().Set("Content-Type", "application/json")
+
+    enc := h.JSONEncoder // ex.: goccy/go-json
+    _ = enc.NewEncoder(w).Encode(struct {
+        Changes    interface{} `json:"changes"`
+        NextCursor string      `json:"next_cursor,omitempty"`
+    }{Changes: res, NextCursor: nextCursor})
+}
+```
+
+- Serviço `FetchChanges` deve retornar somente registros com `updated_at > since` incluindo soft-deletes (`deleted_at`).
+- Suportar gzip/br e paginação por cursor; campos seletivos via `fields`.
+
+## APIs de sincronização eficiente (redução de payload e CPU)
+- GET /api/v1/sync/changes?since=timestamp — retorna somente alterações após ‘since’ por entidade.
+- Usar timestamps monotônicos (updated_at) e soft-deletes (deleted_at) para reconciliar no cliente.
+- Suporte a compactação gzip/br e ETag para respostas de sync.
+
+## Ajustes de contratos e limites
+- Todas as listas devem aceitar: fields, limit, cursor/next_token e ETag condicional.
+- Uploads: limitar tamanho (ex.: 200KB) e dimensões; rejeitar reprocessamento caro no servidor.
+- Tarefas pesadas no servidor (PDF): timeout curto (ex.: 2–5s) e retorno 202 com polling opcional.
+
+## Docker e Deploy
+- Backend (Go) multi-stage:
+  - Stage builder: golang:1.22-alpine com GOFLAGS="-ldflags='-s -w'" e CGO_ENABLED=0.
+  - Stage final: scratch/distroless, copiar binário e certs; expor API_PORT.
+- Frontend (Angular/Ionic):
+  - Build node:20-alpine → gerar dist; servir com nginx:alpine com headers de cache fortes.
+- docker-compose.yml (dev):
+  - services: backend, frontend (nginx), caddy/nginx reverso (TLS local opcional).
+  - Variáveis: SUPABASE_URL/KEY, DB_URL, CORS_ORIGINS, API_PORT, NG_APP_*.
+- Observação: Supabase gerenciado (SaaS); não subir Postgres local no compose.
+
+## Roadmap inicial
+1) ✅ Setup Supabase (tabelas, RLS, buckets, triggers e índices)
+2) ✅ Backend Skeleton (Go) - Implementado
+3) 🔄 Frontend Skeleton (PWA com tabs, auth, rotas lazy, SW) - Em Andamento
+4) Fluxo de receitas/baixas (com idempotência e paginação)
+5) Upload e gestão de assinaturas (validação e limites)
+6) Geração de recibo (client) + fallback server otimizado
+7) Sincronização incremental e background sync
+8) Telemetria, rate limiting e polimento de UX
+
+## Status Atual do Projeto ✅
+- **Fase atual**: Fase 3 - Frontend Skeleton (Em Andamento)
+- **Fases concluídas**: 
+  - ✅ Fase 0: Preparação do ambiente
+  - ✅ Fase 2: Backend Skeleton (Go)
+- **Próximos passos**: 
+  - Criar projeto Angular/Ionic com estrutura de tabs
+  - Implementar autenticação Supabase no frontend
+  - Configurar PWA e Service Worker
+  - Setup IndexedDB com Dexie
+
+## Sugestões de melhorias e diferenciais
+- Templates de recibo personalizáveis e tema escuro/claro automático.
+- QRCode no recibo com verificação pública do hash/validade.
+- Recorrência automática de receitas com calendário e lembretes push (Web Push).
+- Exportações (CSV/Excel) e integração com contabilidade.
+- Modo “Operador” multiusuário com papéis/ACL por time.
+- Assistente de onboarding orientado por checklist.
+- Suporte completo a PWA: instalação em iOS/Android/Desktop, ícones adaptativos, navegação full-screen.
+- Modo "Lite" que reduz animações e desativa pré-carregamentos em dispositivos/planos limitados.
+- Pré-visualização de recibo com render incremental para dispositivos lentos.
+
+## Novas melhorias identificadas (análise adicional)
+- Denormalização controlada para listas (ex.: armazenar nome do pagador no rf_incomes) reduzindo joins frequentes.
+- E2E de performance: testes k6 com cenários leves, budget de latência e erro; regressões bloqueiam deploy.
+- ETags + Cache-Control em todas as listas e detalhes; validação condicional para salvar largura de banda.
+- Política de retenção de logs e dados temporários para evitar encher disco/quotas.
+- Hard caps por usuário (itens por mês, PDFs armazenados) com mensagens claras e upsell futuro.
+- Mecanismo de limpeza de rascunhos/arquivos órfãos no Storage (tarefa agendada fora do horário de pico).
+
+— Fim —
