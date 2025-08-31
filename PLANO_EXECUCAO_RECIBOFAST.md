@@ -109,7 +109,7 @@ Entrega: fluxo financeiro básico funcionando ✅
 - ✅ Validação Zod integrada com feedback visual de erros
 - ✅ Suporte para criação e edição de receitas
 
-## Fase 5 — Integração Frontend-Backend 🔄 95% CONCLUÍDA
+## Fase 5 — Integração Frontend-Backend ✅ CONCLUÍDA
 [x] Implementar listagem de receitas com filtros e paginação
 [x] Implementar modal de baixa de pagamentos
 [x] Conectar frontend com backend através de serviços de API
@@ -117,11 +117,13 @@ Entrega: fluxo financeiro básico funcionando ✅
 [x] Implementar mapeadores DTO (toBackendPaymentRequest, fromBackendPayment)
 [x] Ajustar usePagamentos para usar endpoints /payments e /incomes/{id}/payments
 [x] Validar typecheck do projeto sem erros
-[ ] Corrigir problemas de lint em arquivos legados
-[ ] Criar dashboard com resumos financeiros
-[ ] Testes de integração frontend-backend
+[x] Corrigir problemas de lint em arquivos legados
+[x] Criar dashboard com resumos financeiros
+[x] Testes de integração frontend-backend
+[x] Configurar repositório GitHub com branch main
+[x] Atualizar documentação completa (PRD, Arquitetura, README)
 
-Entrega: integração completa frontend-backend para pagamentos
+Entrega: integração completa frontend-backend para pagamentos ✅
 
 **Status Detalhado:**
 - ✅ Página Receitas.tsx implementada com listagem completa
@@ -141,8 +143,11 @@ Entrega: integração completa frontend-backend para pagamentos
 - ✅ Mapeadores DTO implementados para conversão de dados
 - ✅ Hook usePagamentos ajustado para rotas /payments (POST) e /incomes/{id}/payments (GET)
 - ✅ Typecheck do projeto aprovado sem erros de tipo
-- 🔄 Pendente: Correção de 76 problemas de lint em arquivos legados
-- 🔄 Pendente: Dashboard com resumos financeiros
+- ✅ Correção de problemas de lint em arquivos legados
+- ✅ Dashboard implementado com resumos financeiros e hook useDashboard
+- ✅ Testes de integração melhorados e corrigidos
+- ✅ Repositório GitHub configurado com branch main
+- ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README)
 
 ## Fase 6 — Assinaturas
 [ ] Upload de PNG (validação MIME e dimensões)

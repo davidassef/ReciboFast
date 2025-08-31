@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Status atual do projeto ReciboFast e próximos passos recomendados
-# Data: 29-08-2025
+# Data: 21-01-2025
 
 # STATUS DO PROJETO RECIBOFAST
 
@@ -14,23 +14,57 @@
 
 ## ✅ Marcos Alcançados
 
-### Fase 2 - Backend Skeleton (100% Concluída)
-- [x] **Configuração de Ambiente**: Arquivo `.env` configurado com todas as variáveis necessárias
-- [x] **Dependências Go**: Bibliotecas JWT (`github.com/lestrrat-go/jwx/v2`) e outras dependências instaladas
-- [x] **Middleware JWT**: Implementado middleware `SupabaseAuth` com validação JWKS
-- [x] **Conexão com Banco**: Configurada e testada conectividade com PostgreSQL do Supabase
-- [x] **Contexto de Usuário**: Criado pacote `internal/context` para gerenciar user_id
-- [x] **Endpoint Sync**: Implementado endpoint `/api/v1/sync/changes` funcional
-- [x] **Servidor Funcional**: Backend executando na porta 8080 com logs estruturados
+### ✅ Fase 1 - Banco de Dados e RLS (CONCLUÍDA)
+- [x] Schema completo das tabelas `rf_*` aplicado no Supabase
+- [x] Row Level Security (RLS) habilitado e configurado
+- [x] Políticas de isolamento por `owner_id` implementadas
+- [x] Índices de performance criados
+- [x] Triggers para `updated_at` e cálculo de `total_pago`
+- [x] Buckets de storage configurados (`signatures`, `receipts`)
+- [x] Políticas RLS para storage implementadas
+- [x] Permissões para roles `authenticated` e `anon`
 
-### Fase 3 - Frontend Skeleton (100% Concluída)
-- [x] **Setup do Projeto React**: Projeto criado com Vite + React + TypeScript + Tailwind CSS
-- [x] **Dependências Frontend**: Instaladas todas as dependências (Supabase, Dexie, Axios, React Router)
-- [x] **Estrutura de Navegação**: Implementada navegação com tabs (Dashboard, Receitas, Contratos, Recibos, Perfil)
-- [x] **Autenticação Supabase**: Sistema completo de login/registro com contexto de autenticação
-- [x] **PWA Configurado**: Service Worker, manifesto e ícones configurados para funcionamento offline
-- [x] **IndexedDB**: Configurado Dexie para armazenamento local com sincronização
-- [x] **Páginas Principais**: Todas as páginas criadas com layouts responsivos e dados mockados
+### ✅ Fase 2 - Backend Skeleton (CONCLUÍDA)
+- [x] Servidor HTTP Go com middleware JWT
+- [x] Conexão com Supabase Postgres
+- [x] Sistema de logging estruturado
+- [x] Endpoint `/sync` para sincronização
+- [x] Contexto de usuário autenticado
+- [x] Configuração via variáveis de ambiente
+- [x] Estrutura de handlers, services e repositories
+
+### ✅ Fase 3 - Frontend Skeleton (CONCLUÍDA)
+- [x] Aplicação React com Vite e TypeScript
+- [x] Integração com Supabase Auth
+- [x] Roteamento com React Router
+- [x] UI com Tailwind CSS e shadcn/ui
+- [x] Estado global com Zustand
+- [x] Configuração PWA
+- [x] Estrutura de componentes e hooks
+
+### ✅ Fase 4 - Receitas e Baixas (CONCLUÍDA)
+- [x] Backend CRUD completo para receitas e pagamentos
+- [x] Modelos Income, Payment, PaymentRequest implementados
+- [x] Repositório IncomeRepository com métodos CRUD
+- [x] Serviço IncomeService com lógica de negócio
+- [x] Handlers HTTP para receitas e pagamentos
+- [x] Middleware SupabaseAuth com validação JWKS
+- [x] Rotas protegidas (/api/v1/incomes, /api/v1/payments)
+- [x] Frontend: ReceitaForm com validação Zod
+- [x] Listagem de receitas com filtros e paginação
+- [x] Modal de baixa de pagamentos (PagamentoModal)
+
+### ✅ Fase 5 - Integração Frontend-Backend (CONCLUÍDA)
+- [x] Integração completa entre frontend e backend
+- [x] Serviços de API alinhados com endpoints reais
+- [x] Mapeadores DTO para conversão de dados
+- [x] Hooks personalizados para gerenciamento de estado
+- [x] Validação de tipos TypeScript sem erros
+- [x] Correções de lint e melhorias de código
+- [x] Dashboard implementado com resumos financeiros
+- [x] Testes de integração corrigidos e melhorados
+- [x] Repositório GitHub configurado com branch main
+- [x] Documentação técnica completa atualizada
 
 ### Correções Técnicas Implementadas
 - [x] **Ciclo de Importação**: Resolvido criando pacote separado para helpers de contexto
@@ -81,74 +115,38 @@ MASTER_KEY=...
 - ✅ Navegação por tabs responsiva
 - ✅ Páginas com layouts modernos e dados mockados
 
-## 🎯 Próximos Passos Recomendados
+## 🚀 Próximos Passos
 
-### Prioridade Alta (Próximas 2 semanas)
+### Fase 6 - Assinaturas e Recibos (PRÓXIMA FASE)
+1. **Upload de Assinaturas**: Sistema de upload e validação de PNG
+   - Validação de MIME type e dimensões
+   - Armazenamento em bucket privado do Supabase
+   - Interface de seleção e preview
+   - Ajuste de escala e posicionamento
 
-#### 1. Fase 4 - Receitas e Baixas (Próxima Prioridade)
-- [ ] **CRUD de Receitas Funcional**
-  - Conectar páginas com Supabase
-  - Implementar formulários de criação/edição
-  - Adicionar validações de negócio
-  
-- [ ] **Sistema de Sincronização**
-  - Implementar sync entre IndexedDB e Supabase
-  - Configurar modo offline
-  - Resolver conflitos de dados
-  
-- [ ] **Melhorias de UX**
-  - Adicionar loading states
-  - Implementar toast notifications
-  - Configurar validação de formulários
+2. **Geração de Recibos**: Templates PDF profissionais
+   - Template paisagem moderno
+   - Aplicação de assinatura proporcional
+   - Dados dinâmicos da receita e pagamento
+   - Geração client-side para performance
 
-#### 2. Completar Endpoints Backend
-- [ ] **Endpoints de Usuário**
-  - `GET /api/v1/me` - Perfil do usuário
-  - `POST /api/v1/profiles` - Atualizar perfil
-  
-- [ ] **Endpoints de Pagadores**
-  - `GET /api/v1/payers` - Listar pagadores
-  - `POST /api/v1/payers` - Criar pagador
-  
-- [ ] **Endpoints de Contratos**
-  - `GET /api/v1/contracts` - Listar contratos
-  - `POST /api/v1/contracts` - Criar contrato
+3. **QR Code e Verificação**: Sistema de autenticidade
+   - Geração de QR Code único por recibo
+   - Hash de verificação criptográfico
+   - Página pública de verificação
+   - Registro de recibos no banco de dados
 
-### Prioridade Média (Próximas 4 semanas)
+### Fase 7 - Sincronização e Offline
+1. **Sincronização Incremental**: Endpoint estável com cursor
+2. **Background Sync**: Fila de sincronização limitada
+3. **Estratégias de Cache**: SWR/NetworkFirst por rota
+4. **Fallback Offline**: Experiência robusta em redes instáveis
 
-#### 3. Fase 4 - Receitas e Baixas
-- [ ] **CRUD de Receitas**
-  - Listagem paginada com filtros
-  - Criação e edição de receitas
-  - Validações de negócio
-  
-- [ ] **Sistema de Pagamentos**
-  - Registrar baixas (total/parcial)
-  - Implementar idempotência
-  - Histórico de pagamentos
-
-#### 4. Banco de Dados Supabase
-- [ ] **Criar Tabelas**
-  - Implementar schema completo (rf_*)
-  - Configurar índices compostos
-  - Implementar triggers para totais
-  
-- [ ] **Row Level Security (RLS)**
-  - Policies por owner_id = auth.uid()
-  - Testar segurança com usuários diferentes
-  - Configurar buckets privados
-
-### Prioridade Baixa (Próximas 8 semanas)
-
-#### 5. Fase 5 - Assinaturas
-- [ ] Upload e validação de PNG
-- [ ] Armazenamento em Supabase Storage
-- [ ] Preview e ajuste de escala
-
-#### 6. Fase 6 - Geração de Recibos
-- [ ] Template PDF moderno
-- [ ] Aplicação de assinatura proporcional
-- [ ] QRCode para verificação
+### Melhorias Contínuas
+1. **Performance**: Otimização de queries e cache
+2. **Testes**: Cobertura completa de testes automatizados
+3. **Monitoramento**: Logs estruturados e métricas
+4. **Segurança**: Auditoria e hardening adicional
 
 ## 🚨 Riscos e Dependências
 
@@ -169,15 +167,29 @@ MASTER_KEY=...
 
 ## 📈 Métricas de Progresso
 
-### Fases Concluídas: 3/10 (30%)
-- ✅ Fase 0: Preparação do ambiente
+## 📈 Progresso Geral
+
+**Fase 1**: ████████████████████ 100%
+**Fase 2**: ████████████████████ 100%
+**Fase 3**: ████████████████████ 100%
+**Fase 4**: ████████████████████ 100%
+**Fase 5**: ████████████████████ 100%
+
+**PROJETO TOTAL**: ████████████████████ 100% (Fases 1-5)
+
+**PRÓXIMA ETAPA**: Fase 6 - Assinaturas e Recibos
+
+### Fases Concluídas: 5/10 (50%)
+- ✅ Fase 1: Banco de Dados e RLS
 - ✅ Fase 2: Backend Skeleton
 - ✅ Fase 3: Frontend Skeleton
-- 🔄 Fase 4: Receitas e Baixas (Próxima)
+- ✅ Fase 4: Receitas e Baixas
+- ✅ Fase 5: Integração Frontend-Backend
+- 🔄 Fase 6: Assinaturas e Recibos (Próxima)
 
 ### Estimativa de Conclusão
-- **MVP (Fases 0-7)**: 8-10 semanas
-- **Versão Completa (Fases 0-10)**: 12-16 semanas
+- **MVP (Fases 1-7)**: 6-8 semanas restantes
+- **Versão Completa (Fases 1-10)**: 10-12 semanas restantes
 
 ## 🛠️ Comandos Úteis
 
@@ -216,6 +228,23 @@ npm run preview
 1. **Ciclos de Importação**: Importante planejar dependências entre pacotes
 2. **Chaves de Contexto**: Usar tipos específicos para evitar conflitos
 3. **Debugging**: Logs detalhados facilitam identificação de problemas
+
+---
+
+**✅ FASE 5 CONCLUÍDA COM SUCESSO**
+
+A Fase 5 de Integração Frontend-Backend foi finalizada com 100% de conclusão. Todas as funcionalidades principais estão implementadas e funcionais:
+
+- ✅ Integração completa entre React frontend e Go backend
+- ✅ Sistema de autenticação via Supabase Auth
+- ✅ CRUD completo de receitas e pagamentos
+- ✅ Dashboard com resumos financeiros implementado
+- ✅ Testes de integração corrigidos e melhorados
+- ✅ Repositório GitHub configurado com branch main
+- ✅ Documentação técnica completa (PRD, Arquitetura, README)
+- ✅ Correções de lint e melhorias de código
+
+**🎯 PRÓXIMO MARCO**: Iniciar Fase 6 - Implementação de assinaturas digitais e geração de recibos em PDF.
 
 ---
 
