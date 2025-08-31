@@ -11,7 +11,7 @@
 - **Fase 2 - Backend Skeleton**: ✅ **100% CONCLUÍDA**
 - **Fase 3 - Frontend Skeleton**: ✅ **100% CONCLUÍDA**
 - **Fase 4 - Receitas e Baixas**: ✅ **100% CONCLUÍDA**
-- **Fase 5 - Frontend Receitas**: 🔄 **95% CONCLUÍDA - INTEGRAÇÃO EM ANDAMENTO**
+- **Fase 5 - Integração Frontend-Backend**: ✅ **100% CONCLUÍDA**
 
 ## 🏆 Marcos Alcançados
 
@@ -55,14 +55,16 @@
 - [x] Listagem de receitas com filtros e paginação
 - [x] Modal de baixa de pagamentos (PagamentoModal)
 
-### 🔄 Fase 5 - Integração Frontend-Backend (95% CONCLUÍDA)
+### ✅ Fase 5 - Integração Frontend-Backend (CONCLUÍDA)
 - [x] Serviço pagamentosService.ts alinhado com backend
 - [x] Mapeadores DTO implementados (toBackendPaymentRequest, fromBackendPayment)
 - [x] Hook usePagamentos ajustado para usar rotas reais
 - [x] Endpoints /payments (POST) e /incomes/{id}/payments (GET) integrados
 - [x] Typecheck do projeto aprovado sem erros
-- [ ] Correção de problemas de lint em arquivos legados
-- [ ] Testes de integração frontend-backend
+- [x] Correção de problemas de lint em arquivos legados
+- [x] Testes de integração frontend-backend
+- [x] Dashboard implementado com resumos financeiros
+- [x] Documentação técnica completa atualizada
 
 ## 🔧 Correções Técnicas Implementadas
 
@@ -115,26 +117,22 @@
 
 ## 🚀 Próximos Passos
 
-### Fase 5 - Finalização da Integração (EM ANDAMENTO)
-1. **Correções de Lint**: Resolver problemas de lint em arquivos legados
-   - Remover variáveis não utilizadas
-   - Corrigir uso de `any` em api.ts, oauthErrors.ts
-   - Ajustar caracteres de escape desnecessários
-
-2. **Testes de Integração**: Validar fluxo completo
-   - Testar criação de receitas via API
-   - Validar registro de pagamentos
-   - Verificar sincronização de dados
-
-3. **Dashboard**: Implementar resumos financeiros
-   - Estatísticas de receitas
-   - Gráficos de pagamentos
-   - Indicadores de performance
-
-### Fase 6 - Assinaturas e Recibos
+### Fase 6 - Assinaturas e Recibos (PRÓXIMA ETAPA)
 1. **Upload de Assinaturas**: Sistema de upload e validação
+   - Validação MIME e dimensões de imagens PNG
+   - Armazenamento em bucket privado com metadados
+   - Interface de seleção/preview e ajuste de escala
+
 2. **Geração de Recibos**: Templates PDF com assinatura
-3. **QR Code**: Verificação de autenticidade
+   - Template paisagem moderno (PDF client-side)
+   - Aplicação de assinatura proporcional
+   - Registro de recibo com hash e upload opcional do PDF
+   - QRCode opcional para verificação de autenticidade
+
+### Fase 7 - Sincronização e Offline
+1. **Sincronização Incremental**: Endpoint estável com cursor e ETag
+2. **Background Sync**: Fila limitada para operações offline
+3. **Estratégia de Cache**: SWR/NetworkFirst por rota com fallback offline
 
 ## 🎯 Status Técnico
 
@@ -151,14 +149,20 @@
 **Fase 2**: ████████████████████ 100%
 **Fase 3**: ████████████████████ 100%
 **Fase 4**: ████████████████████ 100%
-**Fase 5**: ███████████████████░ 95%
+**Fase 5**: ████████████████████ 100%
 
-**PROJETO TOTAL**: ███████████████████░ 95%
+**PROJETO TOTAL**: ████████████████████ 100% (Fases 1-5)
 
 ---
 
-**✅ INTEGRAÇÃO DE PAGAMENTOS CONCLUÍDA**
+**✅ FASE 5 COMPLETAMENTE CONCLUÍDA**
 
-A integração do fluxo de pagamentos entre frontend e backend foi finalizada com sucesso. O serviço `pagamentosService.ts` e o hook `usePagamentos` estão alinhados com as rotas reais do backend (/payments POST e /incomes/{id}/payments GET). Mapeadores DTO implementados e typecheck aprovado. Restam apenas correções de lint em arquivos legados e testes finais de integração.
+A Fase 5 (Integração Frontend-Backend) foi finalizada com 100% de sucesso. Todas as funcionalidades principais estão operacionais:
+- ✅ Integração completa do fluxo de pagamentos frontend-backend
+- ✅ Dashboard com resumos financeiros implementado
+- ✅ Correções de lint finalizadas em todos os arquivos
+- ✅ Testes de integração validados e aprovados
+- ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README)
+- ✅ Repositório GitHub configurado com todas as alterações commitadas
 
-**🎯 PRÓXIMO MARCO**: Finalizar Fase 5 com correções de lint e implementar dashboard com resumos financeiros.
+**🎯 PRÓXIMO MARCO**: Iniciar Fase 6 - Assinaturas e Recibos com sistema de upload e geração de PDFs.

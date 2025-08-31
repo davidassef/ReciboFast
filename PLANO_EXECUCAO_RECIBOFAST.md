@@ -149,20 +149,34 @@ Entrega: integração completa frontend-backend para pagamentos ✅
 - ✅ Repositório GitHub configurado com branch main
 - ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README)
 
-## Fase 6 — Assinaturas
-[ ] Upload de PNG (validação MIME e dimensões)
-[ ] Armazenamento em bucket privado e metadados
-[ ] Seleção/preview e ajuste de escala
+## Fase 6 — Assinaturas e Recibos 🎯 PRÓXIMA ETAPA
 
-Entrega: assinatura pronta para uso nos recibos
+### 6.1 — Sistema de Assinaturas
+[ ] Upload de PNG (validação MIME e dimensões máx. 2MB)
+[ ] Armazenamento em bucket privado `signatures` com metadados
+[ ] Interface de seleção/preview e ajuste de escala
+[ ] Validação de transparência e qualidade da imagem
+[ ] Sistema de backup e versionamento de assinaturas
 
-## Fase 6 — Recibos
-[ ] Template paisagem moderno (PDF client-side)
-[ ] Aplicação de assinatura proporcional
-[ ] Registro de recibo com hash e (opcional) upload do PDF
-[ ] QRCode opcional para verificação
+**Entrega 6.1**: assinatura pronta para uso nos recibos
 
-Entrega: geração e download/compartilhamento de recibos
+### 6.2 — Geração de Recibos
+[ ] Template paisagem moderno (PDF client-side com jsPDF)
+[ ] Aplicação de assinatura proporcional e posicionamento
+[ ] Registro de recibo com hash SHA-256 e metadados
+[ ] Upload opcional do PDF no bucket `receipts`
+[ ] QRCode para verificação de autenticidade
+[ ] Campos dinâmicos (locatário, valor, competência, observações)
+[ ] Preview antes da geração final
+
+**Entrega 6.2**: geração e download/compartilhamento de recibos
+
+**Critérios de Aceitação Fase 6:**
+- Upload de assinatura funcional com validações
+- Geração de PDF com layout profissional
+- QRCode funcional para verificação
+- Armazenamento seguro com RLS
+- Interface intuitiva para usuário final
 
 ## Fase 7 — Sincronização e Offline
 [ ] Endpoint incremental estável (cursor, since, ETag)
@@ -199,27 +213,57 @@ Entrega: critérios de qualidade aprovados
 [ ] Modo Lite (redução de animações e pré-carregamentos)
 [ ] View materializada de dashboards
 
-## Riscos e mitigação
+## Desafios Encontrados e Soluções
+
+### Fase 5 - Integração Frontend-Backend
+**Desafios:**
+- Alinhamento de tipos TypeScript entre frontend e backend
+- Problemas de lint em arquivos legados (76 issues iniciais)
+- Mapeamento correto de DTOs para comunicação API
+- Sincronização de estado entre IndexedDB local e backend
+
+**Soluções Implementadas:**
+- ✅ Criação de mapeadores DTO específicos (toBackendPaymentRequest, fromBackendPayment)
+- ✅ Refatoração completa do pagamentosService.ts para usar rotas reais
+- ✅ Correção sistemática de todos os problemas de lint
+- ✅ Implementação de typecheck rigoroso sem erros
+- ✅ Testes de integração abrangentes para validar fluxo completo
+
+## Riscos e Mitigação
 - Limites do provedor freemium → rate limit, cache, jobs off-peak
 - PDFs pesados → tamanho/qualidade controlados e client-first
 - Quotas de Storage → limpeza de órfãos e caps por usuário
+- Complexidade de assinaturas → validação MIME rigorosa e preview antes do upload
 
-## Gatilhos de release e checkpoints
-- Beta: Fases 0–7 concluídas + métricas básicas
-- RC: Fase 8–9 concluídas sem regressões de performance
-- GA: Fase 10 concluída e documentação atualizada
+## Métricas de Sucesso
+
+### Fase 6 - Assinaturas e Recibos
+- **Performance**: Upload de assinatura < 3s para arquivos até 2MB
+- **Qualidade**: Geração de PDF < 5s com layout consistente
+- **Usabilidade**: Fluxo completo (assinatura → recibo) em < 60s
+- **Segurança**: 100% dos uploads validados (MIME + dimensões)
+- **Confiabilidade**: QRCode verificável em 100% dos recibos gerados
+
+## Gatilhos de Release e Checkpoints
+- **Beta**: Fases 0–7 concluídas + métricas básicas
+- **RC**: Fase 8–9 concluídas sem regressões de performance
+- **GA**: Fase 10 concluída e documentação atualizada
+- **Milestone Atual**: Fase 6 (Assinaturas e Recibos) - Estimativa: 3-4 semanas
 
 ## Histórico de alterações
-- 30-08-2025: Fase 5 (Integração Frontend-Backend) 95% concluída
+- 30-08-2025: Fase 5 (Integração Frontend-Backend) 100% CONCLUÍDA
   - ✅ Integração completa do fluxo de pagamentos frontend-backend
   - ✅ Serviço pagamentosService.ts alinhado com rotas reais (/payments POST, /incomes/{id}/payments GET)
   - ✅ Mapeadores DTO implementados (toBackendPaymentRequest, fromBackendPayment)
   - ✅ Hook usePagamentos ajustado para usar endpoints do backend real
   - ✅ Typecheck do projeto aprovado sem erros de tipo
-  - ✅ Remoção de dependências de endpoints não suportados (cancel, stats, histórico)
-  - 🔄 Pendente: Correção de 76 problemas de lint em arquivos legados
-  - 🔄 Pendente: Dashboard com resumos financeiros
-  - 🎯 Próximo: Finalizar correções de lint e implementar dashboard
+  - ✅ Correção completa de problemas de lint em arquivos legados
+  - ✅ Dashboard implementado com resumos financeiros e hook useDashboard
+  - ✅ Testes de integração frontend-backend validados
+  - ✅ Repositório GitHub configurado com branch main
+  - ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README)
+  - ✅ Arquivo .gitignore otimizado para projetos React/Go
+  - 🎯 Próximo: Iniciar Fase 6 - Assinaturas e Recibos
 - 29-01-2025: Fase 1 (Banco de dados e RLS) completamente implementada
   - ✅ Todas as tabelas rf_* criadas e configuradas
   - ✅ Row Level Security (RLS) habilitado e validado

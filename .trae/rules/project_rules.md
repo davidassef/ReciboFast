@@ -5,3 +5,5 @@
 - Sempre que houverem mudanças significativas no projeto, os documentos deverão ser atualizados imediatamentes
 
 - Sempre resolva os problemas de lint automaticamente quando terminar a tarefa em um arquivo
+
+- Mantenha os documentos atualizado com a data correta. Para saber a data correta, use o comando "date"
