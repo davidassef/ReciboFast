@@ -4,7 +4,7 @@
 // MIT License
 
 import React from 'react';
-import { RefreshCw, Wifi, WifiOff, X } from 'lucide-react';
+import { RefreshCw, Wifi, X } from 'lucide-react';
 import { usePWA } from '../hooks/usePWA';
 import { cn } from '../lib/utils';
 

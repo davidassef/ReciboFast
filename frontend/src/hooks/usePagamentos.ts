@@ -65,11 +65,12 @@ export const usePagamentos = () => {
       // Tenta fallback offline
       return await registrarPagamentoOffline(receitaId, pagamentoData);
     }
-  }, [updateState, state.pagamentos]);
+  }, [updateState, state.pagamentos, registrarPagamentoOffline]);
 
   // Registra pagamento offline (fallback)
-  const registrarPagamentoOffline = useCallback(async (_receitaId: string, _pagamentoData: PagamentoForm): Promise<Pagamento> => {
+  const registrarPagamentoOffline = useCallback(async (receitaId: string, pagamentoData: PagamentoForm): Promise<Pagamento> => {
     // TODO: Implementar cache local com IndexedDB/localStorage
+    console.log('Tentativa de registro offline:', { receitaId, pagamentoData });
     throw new Error('API não disponível e cache offline não implementado');
   }, []);
 
@@ -95,11 +96,12 @@ export const usePagamentos = () => {
       console.error('Erro ao buscar pagamentos:', error);
       return await buscarPagamentosOffline(receitaId);
     }
-  }, [updateState]);
+  }, [updateState, buscarPagamentosOffline]);
 
   // Busca pagamentos offline (fallback)
-  const buscarPagamentosOffline = useCallback(async (_receitaId: string): Promise<Pagamento[]> => {
+  const buscarPagamentosOffline = useCallback(async (receitaId: string): Promise<Pagamento[]> => {
     // TODO: Implementar cache local com IndexedDB/localStorage
+    console.log('Buscando pagamentos offline para receita:', receitaId);
     updateState({ pagamentos: [], loading: false });
     return [];
   }, [updateState]);
@@ -126,13 +128,26 @@ export const usePagamentos = () => {
       toast.error(errorMessage);
       await cancelarPagamentoOffline(pagamentoId);
     }
-  }, [updateState, state.pagamentos]);
+  }, [updateState, state.pagamentos, cancelarPagamentoOffline]);
 
   // Cancela pagamento offline (fallback)
-  const cancelarPagamentoOffline = useCallback(async (_pagamentoId: string): Promise<void> => {
+  const cancelarPagamentoOffline = useCallback(async (pagamentoId: string): Promise<void> => {
     // TODO: Implementar cache local para remoção offline
+    console.log('Tentativa de cancelamento offline:', pagamentoId);
     throw new Error('API não disponível e cache offline não implementado');
   }, []);
+
+  // Busca estatísticas offline (fallback)
+  const buscarEstatisticasOffline = useCallback(async (): Promise<PagamentoStats> => {
+    const stats: PagamentoStats = {
+      total_pagamentos: 0,
+      valor_total_pago: 0,
+      pagamentos_hoje: 0,
+      valor_pago_hoje: 0,
+    };
+    updateState({ stats });
+    return stats;
+  }, [updateState]);
 
   // Busca estatísticas de pagamentos via API (não suportado: retorna estatísticas vazias)
   const buscarEstatisticas = useCallback(async (): Promise<PagamentoStats> => {
@@ -155,22 +170,18 @@ export const usePagamentos = () => {
       } else {
         return await buscarEstatisticasOffline();
       }
-    } catch (e) {
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
       return await buscarEstatisticasOffline();
     }
-  }, [updateState]);
+  }, [updateState, buscarEstatisticasOffline]);
 
-  // Busca estatísticas offline (fallback)
-  const buscarEstatisticasOffline = useCallback(async (): Promise<PagamentoStats> => {
-    const stats: PagamentoStats = {
-      total_pagamentos: 0,
-      valor_total_pago: 0,
-      pagamentos_hoje: 0,
-      valor_pago_hoje: 0,
-    };
-    updateState({ stats });
-    return stats;
-  }, [updateState]);
+  // Busca histórico offline (fallback)
+  const buscarHistoricoOffline = useCallback(async (receitaId?: string): Promise<PagamentoHistorico[]> => {
+    // TODO: Implementar cache local
+    console.log('Buscando histórico offline para receita:', receitaId);
+    return [];
+  }, []);
 
   // Busca histórico de pagamentos via API (não suportado: retorna vazio)
   const buscarHistorico = useCallback(async (receitaId?: string): Promise<PagamentoHistorico[]> => {
@@ -190,16 +201,11 @@ export const usePagamentos = () => {
       } else {
         return await buscarHistoricoOffline(receitaId);
       }
-    } catch (e) {
+    } catch (error) {
+      console.error('Erro ao buscar histórico:', error);
       return await buscarHistoricoOffline(receitaId);
     }
-  }, []);
-
-  // Busca histórico offline (fallback)
-  const buscarHistoricoOffline = useCallback(async (_receitaId?: string): Promise<PagamentoHistorico[]> => {
-    // TODO: Implementar cache local
-    return [];
-  }, []);
+  }, [buscarHistoricoOffline]);
 
   return {
     ...state,

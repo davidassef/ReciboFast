@@ -11,13 +11,13 @@ interface AuthContextType {
   user: User | null;
   session: AuthSession | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
-  signUp: (email: string, password: string, metadata?: any) => Promise<{ data: any; error: any }>;
-  signOut: () => Promise<{ error: any }>;
-  signInWithGoogle: () => Promise<{ data: any; error: any }>;
-  resetPassword: (email: string) => Promise<{ data: any; error: any }>;
-  updatePassword: (password: string) => Promise<{ data: any; error: any }>;
-  updateProfile: (updates: any) => Promise<{ data: any; error: any }>;
+  signIn: (email: string, password: string) => Promise<{ data: AuthSession | null; error: Error | null }>;
+  signUp: (email: string, password: string, metadata?: Record<string, unknown>) => Promise<{ data: AuthSession | null; error: Error | null }>;
+  signOut: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ data: AuthSession | null; error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ data: unknown | null; error: Error | null }>;
+  updatePassword: (password: string) => Promise<{ data: User | null; error: Error | null }>;
+  updateProfile: (updates: Record<string, unknown>) => Promise<{ data: User | null; error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, metadata?: any) => {
+  const signUp = async (email: string, password: string, metadata?: Record<string, unknown>) => {
     setLoading(true);
     try {
       const result = await auth.signUp(email, password, metadata);
@@ -157,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateProfile = async (updates: any) => {
+  const updateProfile = async (updates: Record<string, unknown>) => {
     try {
       const result = await auth.updateProfile(updates);
       if (result.data?.user) {

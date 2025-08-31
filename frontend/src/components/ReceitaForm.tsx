@@ -77,7 +77,7 @@ export const ReceitaForm: React.FC<ReceitaFormProps> = ({
   /**
    * Atualiza um campo do formulário
    */
-  const updateField = (field: keyof ReceitaFormData, value: any) => {
+  const updateField = (field: keyof ReceitaFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Remove erro do campo quando o usuário começa a digitar
@@ -90,23 +90,7 @@ export const ReceitaForm: React.FC<ReceitaFormProps> = ({
     }
   };
 
-  /**
-   * Formata valor monetário
-   */
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
 
-  /**
-   * Parse valor monetário do input
-   */
-  const parseCurrency = (value: string): number => {
-    const cleanValue = value.replace(/[R$\s\.]/g, '').replace(',', '.');
-    return parseFloat(cleanValue) || 0;
-  };
 
   /**
    * Valida o formulário

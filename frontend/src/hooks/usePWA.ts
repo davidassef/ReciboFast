@@ -19,10 +19,7 @@ export const usePWA = (): PWAState => {
 
   // TODO: Implementar PWA quando configurado
   const needRefreshState = false;
-  const setNeedRefreshState = () => {};
   const offlineReadyState = false;
-  const setOfflineReadyState = () => {};
-  const updateServiceWorker = async () => {};
 
   useEffect(() => {
     setNeedRefresh(needRefreshState);
@@ -32,7 +29,7 @@ export const usePWA = (): PWAState => {
     setOfflineReady(offlineReadyState);
   }, [offlineReadyState]);
 
-  const handleUpdateServiceWorker = async (reloadPage = true) => {
+  const handleUpdateServiceWorker = async () => {
     // TODO: Implementar quando PWA estiver configurado
     console.log('PWA update not configured yet');
   };
