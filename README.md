@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
-# Descrição: Sistema completo de gestão de aluguéis e geração de recibos com assinatura digital
-# Data: 30-08-2025
+# Descrição: README do projeto ReciboFast
+# Data: 04-09-2025
 
 # 🧾 ReciboFast
 
@@ -9,7 +9,7 @@
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 [![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)](https://golang.org/)
-[![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-3178C6.svg)](https://www.typescriptlang.org/)
 [![PWA](https://img.shields.io/badge/PWA-Ready-purple.svg)](https://web.dev/progressive-web-apps/)
 
@@ -34,12 +34,10 @@ O **ReciboFast** é uma Progressive Web Application (PWA) moderna desenvolvida p
 
 **Frontend:**
 - React 18 + TypeScript
-- Vite (build tool)
+- Vite (dev server e build)
 - Tailwind CSS (estilização)
-- Zustand (gerenciamento de estado)
-- React Router (roteamento)
-- Workbox (PWA e cache)
-- Vitest (testes)
+- PWA (vite-plugin-pwa)
+- Vitest + jsdom (testes)
 
 **Backend:**
 - Go 1.23
@@ -60,12 +58,13 @@ O **ReciboFast** é uma Progressive Web Application (PWA) moderna desenvolvida p
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │    Backend      │    │   Supabase      │
-│   (React PWA)   │◄──►│   (Go API)      │◄──►│  (PostgreSQL)   │
+│   (Angular PWA) │◄──►│   (Go API)      │◄──►│  (PostgreSQL)   │
 │                 │    │                 │    │                 │
-│ • React 18      │    │ • Chi Router    │    │ • Database      │
-│ • TypeScript    │    │ • JWT Auth      │    │ • Auth          │
-│ • Tailwind      │    │ • Rate Limit    │    │ • Storage       │
-│ • PWA           │    │ • Logging       │    │ • RLS           │
+│ • Angular 18    │    │ • Chi Router    │    │ • Database      │
+│ • Ionic 7       │    │ • JWT Auth      │    │ • Auth          │
+│ • TypeScript    │    │ • Rate Limit    │    │ • Storage       │
+│ • Tailwind      │    │ • Logging       │    │ • RLS           │
+│ • PWA           │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -161,21 +160,22 @@ go mod download
 docker-compose up -d
 ```
 
-**Opção 2: Execução Manual**
+**Opção 2: Execução Manual (Foco atual)**
 
 1. **Backend:**
-```bash
-cd backend
-go run cmd/main.go
-# Servidor rodando em http://localhost:8080
-```
+   ```bash
+   cd backend
+   go run cmd/api/main.go  # Certifique-se de que o arquivo main.go está em cmd/api/
+   # Servidor respeita a variável de ambiente PORT (padrão 8080). Ex.: PORT=9090 go run cmd/api/main.go
+   ```
 
 2. **Frontend:**
-```bash
-cd frontend
-npm run dev
-# Aplicação rodando em http://localhost:5173
-```
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   # Aplicação rodando em http://localhost:5173
+   ```
 
 ### Acessos
 
@@ -191,19 +191,13 @@ npm run dev
 cd frontend
 
 # Executar testes
-npm run test
+ng test
 
-# Testes com interface
-npm run test:ui
-
-# Testes com coverage
-npm run test:coverage
-
-# Verificação de tipos
-npm run check
+# Testes e2e
+ng e2e
 
 # Lint
-npm run lint
+ng lint
 ```
 
 ### Backend
@@ -234,7 +228,7 @@ npm run build
 **Backend:**
 ```bash
 cd backend
-go build -o bin/recibofast cmd/main.go
+go build -o bin/recibofast cmd/api/main.go
 # Binário gerado em: bin/recibofast
 ```
 
@@ -254,16 +248,16 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```
 ReciboFast/
-├── frontend/                 # Aplicação React
+├── frontend/                 # Aplicação Angular + Ionic
 │   ├── src/
-│   │   ├── components/      # Componentes reutilizáveis
-│   │   ├── pages/          # Páginas da aplicação
-│   │   ├── hooks/          # Hooks personalizados
-│   │   ├── services/       # Serviços de API
-│   │   ├── lib/           # Configurações e utilitários
-│   │   └── types/         # Definições de tipos TypeScript
-│   ├── public/            # Arquivos estáticos
-│   └── tests/             # Testes do frontend
+│   │   ├── app/
+│   │   │   ├── components/   # Componentes reutilizáveis
+│   │   │   ├── pages/       # Páginas da aplicação
+│   │   │   ├── services/    # Serviços de API
+│   │   │   └── ...           # Módulos e rotas do Angular
+│   │   ├── assets/          # Arquivos estáticos
+│   │   └── environments/   # Configurações de ambiente
+│   └── ...                  # Configurações do Angular CLI
 ├── backend/                 # API Go
 │   ├── cmd/               # Ponto de entrada
 │   ├── internal/
@@ -316,7 +310,7 @@ ReciboFast/
 
 ### Padrões de Código
 
-- **Frontend**: ESLint + Prettier configurados
+- **Frontend**: ESLint + Prettier configurados para Angular
 - **Backend**: gofmt + golint
 - **Commits**: Conventional Commits
 - **Testes**: Cobertura mínima de 80%
@@ -356,7 +350,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ## 🙏 Agradecimentos
 
 - [Supabase](https://supabase.com) pela infraestrutura BaaS
-- [React](https://reactjs.org) pela biblioteca frontend
+- [Angular](https://angular.io) pelo framework frontend
 - [Go](https://golang.org) pela linguagem backend
 - [Tailwind CSS](https://tailwindcss.com) pelo framework CSS
 - Comunidade open source pelas ferramentas e bibliotecas

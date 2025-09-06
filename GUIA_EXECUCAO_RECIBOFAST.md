@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Guia técnico para execução e setup do projeto ReciboFast
-# Data: 29-08-2025 - Atualizado com progresso da integração Supabase
+# Data: 04-09-2025 - Atualizado PORT, /healthz e variáveis de ambiente
 
 # GUIA DE EXECUÇÃO DO PROJETO — ReciboFast
 
@@ -11,27 +11,28 @@ Este guia orienta o setup local, variáveis de ambiente, ferramentas, padrões d
 - Git, Docker Desktop (última estável) ✅
 - Node.js 20+ e npm 10+ (ou pnpm 9+) ✅
 - Angular CLI 18+, Ionic CLI 7+ ✅
-- Go 1.22+ ✅
+- Go 1.23+ ✅
 - Conta e projeto Supabase (URL e Anon Key), buckets de Storage e Auth ativado (Google) ✅
 - Opcional: k6 (testes de performance), golangci-lint, OpenSSL ✅
 
 ## 2. Variáveis de ambiente ✅ CONFIGURADO
 Arquivos de ambiente configurados para Frontend e Backend.
 
-Frontend (.env.local) - PENDENTE:
-- NG_APP_SUPABASE_URL
-- NG_APP_SUPABASE_ANON_KEY
-- NG_APP_API_BASE_URL
+Frontend (.env.local):
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- VITE_API_BASE_URL
 
-Backend (.env) - CONFIGURADO ✅:
-- API_PORT=8080 ✅
-- CORS_ORIGINS=https://localhost:4200,https://seu-dominio ✅
-- SUPABASE_URL=https://<project>.supabase.co ✅
-- SUPABASE_JWT_PUBLIC_KEY="<copie do JWKS do Supabase ou configure JWKS_URL>" ✅
-- DB_URL="postgres://usuario:senha@host:5432/postgres?sslmode=require&pool_max_conns=10" ✅
-- STORAGE_BUCKET_SIGNATURES=signatures ✅
-- STORAGE_BUCKET_RECEIPTS=receipts ✅
-- (Opcional segurança) MASTER_KEY="chave-base64-para-envelope-encryption" ✅
+Backend (.env):
+- PORT=8080
+- ALLOWED_ORIGINS=http://localhost:4200
+- SUPABASE_URL=https://<project>.supabase.co
+- JWKS_URL=https://<project>.supabase.co/auth/v1/jwks
+- DATABASE_URL="postgres://usuario:senha@host:5432/postgres?sslmode=require&pool_max_conns=10"
+- STORAGE_BUCKET_SIGNATURES=signatures
+- STORAGE_BUCKET_RECEIPTS=receipts
+- SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+- (Opcional segurança) MASTER_KEY="chave-base64-para-envelope-encryption"
 
 Observações:
 - SUPABASE JWT: preferir verificação via JWKS (env JWKS_URL=https://<project>.supabase.co/auth/v1/jwks) no backend.
@@ -91,8 +92,17 @@ Observações:
 ```
 - Execução local ✅:
 ```bash
-# export $(cat .env | xargs)  # Windows: use um arquivo .env.local no VSCode ou setx
-# go run ./cmd/api ✅ SERVIDOR RODANDO NA PORTA 8080
+# Executando (Linux/macOS - bash):
+# PORT=8080 go run cmd/api/main.go
+#
+# Executando (Windows PowerShell):
+# $env:PORT=8080; go run cmd\api\main.go
+#
+# Executando (Windows CMD):
+# set PORT=8080 && go run cmd\api\main.go
+#
+# Health check:
+# curl http://localhost:8080/healthz
 ```
 
 **Status Atual:**
@@ -100,6 +110,40 @@ Observações:
 - ✅ Middleware de autenticação Supabase implementado
 - ✅ Validação JWKS funcionando
 - ✅ Endpoint /api/v1/sync/changes testado
+
+### 4.1 Endpoint: Upload de Assinaturas (PNG)
+
+- Rota protegida: `POST /api/v1/signatures`
+- Auth: `Authorization: Bearer <JWT do usuário Supabase>`
+- Body: `multipart/form-data` com campo `file` (PNG até 2MB)
+
+Exemplo (curl):
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/signatures" \
+  -H "Authorization: Bearer $SUPABASE_USER_JWT" \
+  -F "file=@assinatura.png;type=image/png"
+```
+
+Resposta (201):
+
+```json
+{
+  "status": "uploaded",
+  "metadata": {
+    "owner_id": "<uuid>",
+    "file_name": "assinatura.png",
+    "size": 12345,
+    "width": 800,
+    "height": 200,
+    "hash": "<sha256>",
+    "content_type": "image/png",
+    "storage_path": "<owner>/<hash>_<ts>.png",
+    "created_at": "<rfc3339>",
+    "version": 1
+  }
+}
+```
 
 ## 5. Supabase (DB, Storage, Auth)
 - Criar tabelas e RLS conforme `ARQUITETURA_RECIBOFAST` (rf_profiles, rf_payers, rf_contracts, rf_incomes, rf_payments, rf_receipts, rf_signatures, rf_settings)
