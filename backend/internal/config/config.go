@@ -28,6 +28,7 @@ type Config struct {
 	BucketSigns  string
 	BucketReceipts string
 	MasterKey    string
+	SupabaseServiceRoleKey string
 }
 
 // FromEnv carrega configurações das variáveis de ambiente.
@@ -42,6 +43,7 @@ func FromEnv() *Config {
 		BucketSigns:   getEnv("STORAGE_BUCKET_SIGNATURES", "signatures"),
 		BucketReceipts:getEnv("STORAGE_BUCKET_RECEIPTS", "receipts"),
 		MasterKey:     os.Getenv("MASTER_KEY"),
+		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
 	}
 	return cfg
 }

@@ -19,6 +19,7 @@ import (
 	"recibofast/internal/logging"
 	"recibofast/internal/repositories"
 	"recibofast/internal/services"
+	"recibofast/internal/storage"
 )
 
 // AppDeps injeta dependências no roteador.
@@ -43,9 +44,12 @@ func NewRouter(deps AppDeps) http.Handler {
 
 	// Repositories
 	incomeRepo := repositories.NewIncomeRepository(deps.DB)
+	signRepo := repositories.NewSignatureRepository(deps.DB)
 
 	// Services
 	incomeService := services.NewIncomeService(incomeRepo)
+	signatureService := services.NewSignatureService()
+	storeClient := storage.NewClient(deps.Cfg)
 
 	// Handlers
 	h := handlers.NewHandlers(handlers.Deps{
@@ -56,6 +60,8 @@ func NewRouter(deps AppDeps) http.Handler {
 
 	// Income Handlers
 	incomeHandlers := handlers.NewIncomeHandlers(incomeService, deps.Logger)
+	// Signature Handlers
+	signatureHandlers := handlers.NewSignatureHandlers(signatureService, deps.Logger, deps.Cfg, storeClient, signRepo)
 
 	// Healthcheck
 	r.Get("/healthz", h.Health)
@@ -80,6 +86,12 @@ func NewRouter(deps AppDeps) http.Handler {
 		r.Route("/payments", func(r chi.Router) {
 			r.Use(SupabaseAuth(deps))
 			r.Post("/", incomeHandlers.AddPayment)
+		})
+
+		// Rotas de assinaturas (protegidas por autenticação)
+		r.Route("/signatures", func(r chi.Router) {
+			r.Use(SupabaseAuth(deps))
+			r.Post("/", signatureHandlers.UploadSignature)
 		})
 	})
 

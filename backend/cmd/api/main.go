@@ -1,71 +1,74 @@
 // MIT License
 // Autor atual: David Assef
 // Descrição: Ponto de entrada do servidor HTTP do backend ReciboFast
-// Data: 29-12-2024
+// Data: 05-09-2025
 
 package main
 
 import (
-	"context"
-	"log"
-	"net/http"
-	"os"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
-
-	"recibofast/internal/config"
-	"recibofast/internal/httpserver"
-	"recibofast/internal/logging"
+    "log"
+    "net/http"
+    "os"
+    "encoding/json"
+    
+    "github.com/joho/godotenv"
 )
 
 func main() {
-	// Carrega variáveis de ambiente do arquivo .env (se existir)
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Aviso: arquivo .env não encontrado ou erro ao carregar: %v", err)
-	}
+    // Carrega variáveis do arquivo .env (ignora erro se não existir)
+    _ = godotenv.Load()
 
-	// Configuração
-	cfg := config.FromEnv()
+    mux := http.NewServeMux()
 
-	// Logger
-	logger := logging.NewLogger(cfg.Env)
-	defer logger.Sync()
+    // Endpoint de saúde para verificações simples
+    mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        _, _ = w.Write([]byte("ok"))
+    })
 
-	// Banco de dados (opcional no boot: inicia se DB_URL estiver setado)
-	var pool *pgxpool.Pool
-	if cfg.DBURL != "" {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		p, err := pgxpool.New(ctx, cfg.DBURL)
-		if err != nil {
-			logger.Fatal("erro ao conectar no banco", logging.Field{Key: "error", Val: err.Error()})
-		}
-		pool = p
-	}
+    // Stubs mínimos da API v1 para ambiente de desenvolvimento
+    // Lista de receitas vazia (paginada)
+    mux.HandleFunc("/api/v1/incomes", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        resp := map[string]any{
+            "items":       []any{},
+            "total":       0,
+            "page":        1,
+            "limit":       10,
+            "total_pages": 0,
+        }
+        _ = json.NewEncoder(w).Encode(resp)
+    })
 
-	// Router HTTP
-	r := httpserver.NewRouter(httpserver.AppDeps{
-		Logger: logger,
-		DB:     pool,
-		Cfg:    cfg,
-	})
+    // Estatísticas de receitas zeradas
+    mux.HandleFunc("/api/v1/incomes/stats", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        stats := map[string]any{
+            "total_receitas":    0,
+            "total_valor":       0,
+            "receitas_pendentes": 0,
+            "receitas_pagas":     0,
+            "receitas_vencidas":  0,
+            "valor_pendente":     0,
+            "valor_pago":         0,
+            "valor_vencido":      0,
+        }
+        _ = json.NewEncoder(w).Encode(stats)
+    })
 
-	srv := &http.Server{
-		Addr:              ":" + cfg.APIPort,
-		Handler:           r,
-		ReadTimeout:       10 * time.Second,
-		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
+    // Endpoint raiz informativo (fallback)
+    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        _, _ = w.Write([]byte("Servidor backend rodando"))
+    })
 
-	logger.Info("iniciando servidor", logging.Field{Key: "addr", Val: srv.Addr})
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Printf("erro no servidor: %v", err)
-		os.Exit(1)
-	}
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8080"
+    }
+    addr := ":" + port
+
+    log.Printf("Servidor backend rodando em %s", addr)
+    if err := http.ListenAndServe(addr, mux); err != nil {
+        log.Fatal(err)
+    }
 }
-
-// Campos auxiliares podem ser criados diretamente com logging.Field
