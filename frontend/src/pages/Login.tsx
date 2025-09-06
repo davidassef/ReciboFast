@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de login do usuário
-// Data: 20-01-2025
+// Data: 05-09-2025
 // MIT License
 
 import React, { useState } from 'react';
@@ -10,6 +10,28 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 
+// Mapeia mensagens de erro do Supabase para mensagens amigáveis
+const mapSupabaseAuthError = (error: unknown): string => {
+  if (!error) return 'Erro ao fazer login. Tente novamente.';
+
+  const msg = (error as any)?.message?.toString()?.toLowerCase() ?? '';
+  const status = (error as any)?.status as number | undefined;
+
+  if (msg.includes('email not confirmed') || msg.includes('email_not_confirmed')) {
+    return 'Email não confirmado. Verifique sua caixa de entrada para confirmar sua conta.';
+  }
+  if (msg.includes('invalid login credentials') || msg.includes('invalid_credentials')) {
+    return 'Credenciais inválidas. Verifique seu email e senha.';
+  }
+  if (status === 400 && (msg.includes('invalid_grant') || msg.includes('grant'))) {
+    return 'Não foi possível autenticar. Verifique suas credenciais ou tente redefinir sua senha.';
+  }
+  if (status === 429 || msg.includes('rate limit')) {
+    return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+  }
+  return (error as any)?.message || 'Erro ao fazer login. Tente novamente.';
+};
+
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +39,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn } = useAuth();
+  const { signIn, resendEmailConfirmation, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,12 +51,13 @@ const Login: React.FC = () => {
       const { data, error } = await signIn(email, password);
       
       if (error) {
-        setError(error.message || 'Erro ao fazer login');
+        setError(mapSupabaseAuthError(error));
       } else if (data?.session) {
         navigate('/dashboard');
       }
-    } catch {
-      setError('Erro inesperado. Tente novamente.');
+    } catch (error) {
+      console.error('Erro de login:', error);
+      setError(mapSupabaseAuthError(error));
     } finally {
       setIsLoading(false);
     }
@@ -45,8 +68,8 @@ const Login: React.FC = () => {
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-100 rounded-full mix-blend-multiply opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary-100 rounded-full mix-blend-multiply opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-40 left-40 w-80 h-80 bg-accent-100 rounded-full mix-blend-multiply opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary-100 rounded-full mix-blend-multiply opacity-30 animate-blob [animation-delay:2s]"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-accent-100 rounded-full mix-blend-multiply opacity-30 animate-blob [animation-delay:4s]"></div>
       </div>
       
       <div className="max-w-md w-full relative z-10 animate-fadeIn">
@@ -116,6 +139,34 @@ const Login: React.FC = () => {
                 </div>
               )}
 
+              {/* Ações para e-mail não confirmado */}
+              {error && error.toLowerCase().includes('email não confirmado') && (
+                <div className="flex flex-wrap gap-2 mt-2 animate-fadeIn">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!email) return;
+                      const { error } = await resendEmailConfirmation(email);
+                      if (error) {
+                        console.error('Falha ao reenviar confirmação:', error);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-warning-600 px-3 py-2 text-white text-xs hover:bg-warning-700 transition-colors"
+                  >
+                    Reenviar confirmação
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await refreshUser();
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-warning-700 border border-warning-300 hover:bg-warning-100 transition-colors"
+                  >
+                    Já confirmei — Atualizar status
+                  </button>
+                </div>
+              )}
+
               {/* Remember me and Forgot password */}
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center group">
@@ -157,7 +208,7 @@ const Login: React.FC = () => {
             {/* Divider */}
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gradient-to-r from-transparent via-neutral-300 to-transparent" />
+                <div className="w-full h-px bg-gradient-to-r from-transparent via-neutral-300 to-transparent" />
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-4 py-1 bg-white text-neutral-500 font-medium rounded-full shadow-sm border border-neutral-200">Ou continue com</span>

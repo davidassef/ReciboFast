@@ -5,14 +5,17 @@
  * Data: 30-08-2025
  */
 
-import React, { useState } from 'react';
-import { Pen, Trash2, Check, Plus, Image as ImageIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Pen, Trash2, Check, Plus, Image as ImageIcon, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSignatures } from '../hooks/useSignatures';
-import { SignatureUpload } from '../components/SignatureUpload';
+import { SignatureCreationModal } from '../components/SignatureCreationModal';
 import { Signature } from '../types/signature';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export const SignaturesPage: React.FC = () => {
+  const { user } = useAuth();
   const {
     signatures,
     activeSignature,
@@ -20,12 +23,124 @@ export const SignaturesPage: React.FC = () => {
     error,
     setActiveSignature,
     deleteSignature,
-    getSignatureUrl
+    getSignatureUrl,
+    loadSignatures
   } = useSignatures();
 
-  const [showUpload, setShowUpload] = useState(false);
+  const [showCreationModal, setShowCreationModal] = useState(false);
   const [signatureUrls, setSignatureUrls] = useState<Record<string, string>>({});
   const [loadingUrls, setLoadingUrls] = useState<Set<string>>(new Set());
+
+  // Logos
+  interface LogoItem { name: string; path: string; size?: number; created_at?: string; }
+  const [logos, setLogos] = useState<LogoItem[]>([]);
+  const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
+  const [activeLogoPath, setActiveLogoPath] = useState<string | null>(null);
+  const [isLoadingLogos, setIsLoadingLogos] = useState<boolean>(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState<boolean>(false);
+
+  // Nome amigável para exibição: para entradas antigas no formato
+  // "signature_<user>_<timestamp>.png" ou "canvas_signature_<user>_<timestamp>.png"
+  const getDisplayFileName = (fileName: string): string => {
+    if (!fileName) return 'assinatura.png';
+    const legacy = /^(canvas_)?signature_[^_]+_\d+\.(png|jpg|jpeg)$/i;
+    if (legacy.test(fileName)) return 'assinatura.png';
+    return fileName;
+  };
+
+  // Carregar logos do Storage
+  const loadLogos = async () => {
+    if (!user?.id) return;
+    setIsLoadingLogos(true);
+    try {
+      const brandingPath = `${user.id}/branding`;
+      const { data: list, error: listErr } = await supabase
+        .storage
+        .from('signatures')
+        .list(brandingPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
+      if (listErr) throw listErr;
+      const items: LogoItem[] = (list || [])
+        .filter((it: any) => !!it.name)
+        .map((it: any) => ({ name: it.name, path: `${brandingPath}/${it.name}`, size: it.metadata?.size, created_at: it.created_at }));
+      setLogos(items);
+
+      // URLs assinadas
+      const urlMap: Record<string, string> = {};
+      for (const it of items) {
+        const { data } = await supabase.storage.from('signatures').createSignedUrl(it.path, 60 * 60);
+        if (data?.signedUrl) urlMap[it.path] = data.signedUrl;
+      }
+      setLogoUrls(urlMap);
+
+      // Carrega logo ativa do metadata
+      const { data: { user: fresh } } = await supabase.auth.getUser();
+      const activePath = (fresh?.user_metadata as any)?.default_logo_path as string | undefined;
+      setActiveLogoPath(activePath || null);
+    } catch (e) {
+      console.warn('Erro ao carregar logos:', e);
+      toast.error('Não foi possível carregar suas logos.');
+    } finally {
+      setIsLoadingLogos(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLogos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Upload de nova logo
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    try {
+      setIsUploadingLogo(true);
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${user.id}/branding/logo_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('signatures').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+      if (upErr) throw upErr;
+      await loadLogos();
+      // Define como ativa imediatamente
+      await handleSetActiveLogo(path);
+      toast.success('Logo enviada com sucesso!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Falha ao enviar logo');
+    } finally {
+      setIsUploadingLogo(false);
+      // limpa input
+      (e.target as HTMLInputElement).value = '';
+    }
+  };
+
+  const handleSetActiveLogo = async (path: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { default_logo_path: path } });
+      if (error) throw error;
+      setActiveLogoPath(path);
+      toast.success('Logo definida como ativa!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Não foi possível definir a logo ativa');
+    }
+  };
+
+  const handleRemoveLogo = async (path: string) => {
+    if (!window.confirm('Remover esta logo?')) return;
+    try {
+      const { error } = await supabase.storage.from('signatures').remove([path]);
+      if (error) throw error;
+      if (activeLogoPath === path) {
+        await supabase.auth.updateUser({ data: { default_logo_path: null } });
+        setActiveLogoPath(null);
+      }
+      await loadLogos();
+      toast.success('Logo removida.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Falha ao remover logo');
+    }
+  };
 
   /**
    * Carrega URL de uma assinatura
@@ -54,18 +169,18 @@ export const SignaturesPage: React.FC = () => {
   };
 
   /**
-   * Manipula sucesso do upload
+   * Manipula sucesso da criação de assinatura
    */
-  const handleUploadSuccess = (signatureId: string) => {
-    setShowUpload(false);
-    toast.success('Assinatura enviada com sucesso!');
+  const handleCreationSuccess = (signatureId: string) => {
+    toast.success('Assinatura criada com sucesso!');
+    setShowCreationModal(false);
   };
 
   /**
-   * Manipula erro do upload
+   * Manipula cancelamento da criação
    */
-  const handleUploadError = (error: string) => {
-    toast.error(error);
+  const handleCreationCancel = () => {
+    setShowCreationModal(false);
   };
 
   /**
@@ -131,28 +246,89 @@ export const SignaturesPage: React.FC = () => {
             Gerencie suas assinaturas digitais para usar nos recibos
           </p>
         </div>
-        
         <button
-          onClick={() => setShowUpload(!showUpload)}
+          onClick={() => setShowCreationModal(true)}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span>Nova Assinatura</span>
         </button>
       </div>
-
-      {/* Área de upload */}
-      {showUpload && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Enviar Nova Assinatura
+      {/* Gestão de Logos */}
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Logos ({logos.length})
           </h2>
-          <SignatureUpload
-            onUploadSuccess={handleUploadSuccess}
-            onUploadError={handleUploadError}
-          />
+          <label className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+            <Upload className="w-4 h-4" />
+            <span>{isUploadingLogo ? 'Enviando...' : 'Nova Logo'}</span>
+            <input type="file" accept="image/*" className="hidden" onChange={handleUploadLogo} />
+          </label>
         </div>
-      )}
+
+        {isLoadingLogos ? (
+          <div className="p-8 text-center">
+            <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-600 mt-2">Carregando logos...</p>
+          </div>
+        ) : logos.length === 0 ? (
+          <div className="p-8 text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Você ainda não possui logos salvas</p>
+            <p className="text-sm text-gray-500">Use o botão "Nova Logo" para enviar uma imagem</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {logos.map((logo) => {
+              const url = logoUrls[logo.path];
+              const isActive = activeLogoPath === logo.path;
+              return (
+                <div key={logo.path} className={`p-6 ${isActive ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-36 h-16 border border-gray-200 rounded bg-white flex items-center justify-center">
+                        {url ? (
+                          <img src={url} alt={logo.name} className="max-h-14 max-w-32 object-contain" />
+                        ) : (
+                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate" title={logo.name}>{logo.name}</p>
+                        {isActive && (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mt-1">
+                            <Check className="w-3 h-3 mr-1" />
+                            Ativa
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isActive && (
+                        <button onClick={() => handleSetActiveLogo(logo.path)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Definir como ativa">
+                          <Pen className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => handleRemoveLogo(logo.path)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Remover logo">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de criação de assinatura */}
+      <SignatureCreationModal
+        isOpen={showCreationModal}
+        onClose={handleCreationCancel}
+        onSignatureCreated={(signature) => { handleCreationSuccess(signature.id); loadSignatures(); }}
+        userId={user?.id || ''}
+      />
 
       {/* Lista de assinaturas */}
       <div className="bg-white border border-gray-200 rounded-lg">
@@ -198,32 +374,32 @@ export const SignaturesPage: React.FC = () => {
                   key={signature.id}
                   className={`p-6 ${isActive ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex space-x-4">
-                      {/* Preview da assinatura */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:space-x-4 gap-3 sm:gap-0">
+                      {/* Preview da assinatura (topo no mobile) */}
                       <div className="flex-shrink-0">
                         {url ? (
                           <img
                             src={url}
-                            alt={`Assinatura ${signature.file_name}`}
-                            className="w-24 h-12 object-contain border border-gray-200 rounded bg-white"
+                            alt={`Assinatura ${getDisplayFileName(signature.file_name)}`}
+                            className="w-32 h-16 object-contain border border-gray-200 rounded bg-white mx-auto sm:mx-0"
                           />
                         ) : isLoadingUrl ? (
-                          <div className="w-24 h-12 border border-gray-200 rounded bg-gray-50 flex items-center justify-center">
+                          <div className="w-32 h-16 border border-gray-200 rounded bg-gray-50 flex items-center justify-center mx-auto sm:mx-0">
                             <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                           </div>
                         ) : (
-                          <div className="w-24 h-12 border border-gray-200 rounded bg-gray-50 flex items-center justify-center">
+                          <div className="w-32 h-16 border border-gray-200 rounded bg-gray-50 flex items-center justify-center mx-auto sm:mx-0">
                             <ImageIcon className="w-6 h-6 text-gray-400" />
                           </div>
                         )}
                       </div>
 
-                      {/* Informações da assinatura */}
+                      {/* Informações da assinatura (nome abaixo no mobile) */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="text-sm font-medium text-gray-900 truncate">
-                            {signature.file_name}
+                        <div className="flex items-center space-x-2 justify-center sm:justify-start">
+                          <h3 className="text-sm font-medium text-gray-900 truncate max-w-[240px] sm:max-w-none" title={getDisplayFileName(signature.file_name)}>
+                            {getDisplayFileName(signature.file_name)}
                           </h3>
                           {isActive && (
                             <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -232,8 +408,8 @@ export const SignaturesPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        
-                        <div className="mt-1 grid grid-cols-2 gap-4 text-sm text-gray-600">
+
+                        <div className="mt-2 grid grid-cols-2 gap-4 text-sm text-gray-600">
                           <div>
                             <span className="font-medium">Dimensões:</span> {signature.width}x{signature.height}px
                           </div>
@@ -251,7 +427,7 @@ export const SignaturesPage: React.FC = () => {
                     </div>
 
                     {/* Ações */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center sm:justify-end space-x-2">
                       {!isActive && (
                         <button
                           onClick={() => handleSetActive(signature.id)}

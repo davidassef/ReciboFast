@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de registro do usuário
-// Data: 20-01-2025
+// Data: 04-09-2025
 // MIT License
 
 import React, { useState } from 'react';
@@ -110,8 +110,8 @@ const Register: React.FC = () => {
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-100 rounded-full mix-blend-multiply opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary-100 rounded-full mix-blend-multiply opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-40 left-40 w-80 h-80 bg-accent-100 rounded-full mix-blend-multiply opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary-100 rounded-full mix-blend-multiply opacity-30 animate-blob [animation-delay:2s]"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-accent-100 rounded-full mix-blend-multiply opacity-30 animate-blob [animation-delay:4s]"></div>
       </div>
       
       <div className="max-w-md w-full relative z-10 animate-fadeIn">
@@ -307,7 +307,7 @@ const Register: React.FC = () => {
             {/* Divider */}
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gradient-to-r from-transparent via-neutral-300 to-transparent" />
+                <div className="w-full h-px bg-gradient-to-r from-transparent via-neutral-300 to-transparent" />
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-6 bg-white text-neutral-500 font-medium">Ou continue com</span>

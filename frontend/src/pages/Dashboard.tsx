@@ -41,21 +41,21 @@ const Dashboard: React.FC = () => {
   // Preparar dados dos cards de estatísticas
   const statCards: StatCard[] = [
     {
-      title: 'Receita Total',
+      title: 'Renda Total',
       value: formatarMoeda(stats.receita_total),
       change: `${stats.crescimento_receita >= 0 ? '+' : ''}${stats.crescimento_receita}%`,
       changeType: stats.crescimento_receita > 0 ? 'positive' : stats.crescimento_receita < 0 ? 'negative' : 'neutral',
       icon: DollarSign
     },
     {
-      title: 'Receitas Criadas',
+      title: 'Rendas Criadas',
       value: stats.total_receitas.toString(),
       change: `${stats.crescimento_receitas >= 0 ? '+' : ''}${stats.crescimento_receitas}%`,
       changeType: stats.crescimento_receitas > 0 ? 'positive' : stats.crescimento_receitas < 0 ? 'negative' : 'neutral',
       icon: FileText
     },
     {
-      title: 'Receitas Pagas',
+      title: 'Rendas Pagas',
       value: stats.receitas_pagas.toString(),
       change: `${stats.receitas_pendentes} pendentes`,
       changeType: 'neutral',
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Visão geral das suas receitas e pagamentos
+            Visão geral das suas rendas e pagamentos
           </p>
         </div>
         <button
@@ -226,12 +226,12 @@ const Dashboard: React.FC = () => {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button 
-            onClick={() => navigate('/receitas')}
+            onClick={() => navigate('/recibos')}
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
           >
             <FileText className="w-8 h-8 text-gray-400 group-hover:text-blue-600 mx-auto mb-2 transition-colors" />
             <p className="text-sm font-medium text-gray-600 group-hover:text-blue-700 transition-colors">
-              Nova Receita
+              Novo Recibo
             </p>
           </button>
           <button 

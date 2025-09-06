@@ -1,9 +1,11 @@
 // Autor: David Assef
 // Descrição: Página de perfil do usuário
-// Data: 20-01-2025
+// Data: 05-09-2025
 // MIT License
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import { 
   User, 
   Mail, 
@@ -22,18 +24,19 @@ import {
   LogOut
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 interface UserProfile {
   id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  endereco: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-  empresa: string;
-  cnpj: string;
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  empresa?: string;
+  documento?: string; // CPF ou CNPJ formatado
   avatar?: string;
 }
 
@@ -43,17 +46,17 @@ interface ConfiguracaoNotificacao {
   sms: boolean;
 }
 
-const mockProfile: UserProfile = {
+const initialProfile: UserProfile = {
   id: '1',
-  nome: 'David Assef',
-  email: 'david@recibofast.com',
-  telefone: '(11) 99999-9999',
-  endereco: 'Rua das Flores, 123',
-  cidade: 'São Paulo',
-  estado: 'SP',
-  cep: '01234-567',
-  empresa: 'ReciboFast Ltda',
-  cnpj: '12.345.678/0001-90'
+  nome: '',
+  email: '',
+  telefone: '',
+  endereco: '',
+  cidade: '',
+  estado: '',
+  cep: '',
+  empresa: '',
+  documento: ''
 };
 
 const mockNotificacoes: ConfiguracaoNotificacao = {
@@ -62,10 +65,60 @@ const mockNotificacoes: ConfiguracaoNotificacao = {
   sms: false
 };
 
+// Utilidades CPF/CNPJ
+const onlyDigits = (v: string) => (v || '').replace(/\D/g, '');
+
+const formatCPF = (digits: string) => {
+  const v = digits.slice(0, 11);
+  return v
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+};
+
+const formatCNPJ = (digits: string) => {
+  const v = digits.slice(0, 14);
+  return v
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+};
+
+const validateCPF = (cpfRaw: string): boolean => {
+  const cpf = onlyDigits(cpfRaw);
+  if (cpf.length !== 11 || /^([0-9])\1+$/.test(cpf)) return false;
+  const calcDigit = (base: string, factorStart: number) => {
+    let total = 0;
+    for (let i = 0; i < base.length; i++) total += parseInt(base[i], 10) * (factorStart - i);
+    const rest = (total * 10) % 11;
+    return rest === 10 ? 0 : rest;
+  };
+  const d1 = calcDigit(cpf.substring(0, 9), 10);
+  const d2 = calcDigit(cpf.substring(0, 10), 11);
+  return d1 === parseInt(cpf[9], 10) && d2 === parseInt(cpf[10], 10);
+};
+
+const validateCNPJ = (cnpjRaw: string): boolean => {
+  const cnpj = onlyDigits(cnpjRaw);
+  if (cnpj.length !== 14 || /^([0-9])\1+$/.test(cnpj)) return false;
+  const calc = (base: string) => {
+    const factors = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    let sum = 0;
+    for (let i = 0; i < base.length; i++) sum += parseInt(base[i], 10) * factors[i+ (13-base.length)];
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  const d1 = calc(cnpj.substring(0, 12));
+  const d2 = calc(cnpj.substring(0, 13));
+  return d1 === parseInt(cnpj[12], 10) && d2 === parseInt(cnpj[13], 10);
+};
+
 const Perfil: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'perfil' | 'configuracoes' | 'seguranca'>('perfil');
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState(mockProfile);
+  const [profile, setProfile] = useState(initialProfile);
   const [notificacoes, setNotificacoes] = useState(mockNotificacoes);
   const [showPassword, setShowPassword] = useState(false);
   const [passwords, setPasswords] = useState({
@@ -73,9 +126,90 @@ const Perfil: React.FC = () => {
     new: '',
     confirm: ''
   });
+  const [documentoValido, setDocumentoValido] = useState<boolean | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  // Branding (logo/assinatura) foi movido para a aba Assinaturas
+
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        setProfile(prev => ({
+          ...prev,
+          id: user.id,
+          nome: prev.nome || (user.user_metadata?.name ?? ''),
+          email: prev.email || (user.email ?? ''),
+        }));
+        const avatarPath = (user.user_metadata as any)?.avatar_path as string | undefined;
+        if (avatarPath) {
+          // Tenta no bucket 'avatars' e faz fallback para 'signatures'
+          const primary = await supabase.storage.from('avatars').createSignedUrl(avatarPath, 60 * 60);
+          let signedUrl = primary.data?.signedUrl ?? null;
+          if (!signedUrl) {
+            const fallback = await supabase.storage.from('signatures').createSignedUrl(avatarPath, 60 * 60);
+            signedUrl = fallback.data?.signedUrl ?? null;
+          }
+          if (signedUrl) setProfile(prev => ({ ...prev, avatar: signedUrl }));
+        }
+        // Branding removido desta página: gestão agora em "Assinaturas"
+      } catch (e) {
+        console.warn('Falha ao carregar perfil/avatares:', e);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setAvatarUploading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${user.id}/avatar_${Date.now()}.${ext}`;
+
+      // Tenta bucket 'avatars' e faz fallback para 'signatures'
+      let { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+      if (upErr) {
+        const fallback = await supabase.storage.from('signatures').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+        upErr = fallback.error ?? null;
+      }
+      if (upErr) throw upErr;
+
+      const { error: metaErr } = await supabase.auth.updateUser({ data: { avatar_path: path } });
+      if (metaErr) throw metaErr;
+
+      // Gera URL assinada a partir de 'avatars' ou, se não existir, 'signatures'
+      const signedPrimary = await supabase.storage.from('avatars').createSignedUrl(path, 60 * 60);
+      let signedUrl = signedPrimary.data?.signedUrl ?? null;
+      if (!signedUrl) {
+        const signedFallback = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
+        signedUrl = signedFallback.data?.signedUrl ?? null;
+      }
+      if (signedUrl) setProfile(prev => ({ ...prev, avatar: signedUrl }));
+    } catch (e) {
+      console.error('Falha ao enviar avatar:', e);
+      alert('Não foi possível enviar a foto de perfil.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleProfileSave = () => {
     // Aqui seria feita a chamada para a API
+    if (profile.documento) {
+      const digits = onlyDigits(profile.documento);
+      const valido = digits.length === 11 ? validateCPF(digits) : digits.length === 14 ? validateCNPJ(digits) : false;
+      setDocumentoValido(valido);
+      if (!valido) {
+        // Evita salvar documento inválido (opcionalmente pode permitir salvar vazio)
+        console.warn('CPF/CNPJ inválido.');
+        return;
+      }
+    }
     console.log('Salvando perfil:', profile);
     setIsEditing(false);
   };
@@ -115,10 +249,25 @@ const Perfil: React.FC = () => {
         </button>
       </div>
 
+      {/* Info: gestão de Logos/Assinaturas */}
+      <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm">
+            A gestão de <span className="font-medium">logos</span> e <span className="font-medium">assinaturas</span> agora acontece na aba <span className="font-semibold">Assinaturas</span>.
+          </p>
+          <button
+            onClick={() => navigate('/assinaturas')}
+            className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            Ir para Assinaturas
+          </button>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex flex-nowrap overflow-x-auto whitespace-nowrap -mb-px px-3 sm:px-6 space-x-4 sm:space-x-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -126,7 +275,7 @@ const Perfil: React.FC = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as 'perfil' | 'configuracoes' | 'seguranca')}
                   className={cn(
-                    'flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+                    'flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors shrink-0',
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -158,9 +307,12 @@ const Perfil: React.FC = () => {
                       <User className="w-12 h-12 text-blue-600" />
                     )}
                   </div>
-                  <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
-                    <Camera className="w-4 h-4" />
-                  </button>
+
+          {/* Branding removido desta página; configure suas logos e assinaturas na aba "Assinaturas" */}
+                  <input id="avatar-file" type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                  <label htmlFor="avatar-file" className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors cursor-pointer" aria-label="Enviar foto de perfil">
+                    {avatarUploading ? <span className="text-[10px]">...</span> : <Camera className="w-4 h-4" />}
+                  </label>
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">{profile.nome}</h3>
@@ -237,18 +389,30 @@ const Perfil: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CNPJ
+                    CPF/CNPJ (opcional)
                   </label>
                   <div className="relative">
                     <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
-                      value={profile.cnpj}
-                      onChange={(e) => setProfile(prev => ({ ...prev, cnpj: e.target.value }))}
+                      value={profile.documento}
+                      onChange={(e) => {
+                        if (!isEditing) return;
+                        const digits = onlyDigits(e.target.value).slice(0, 14);
+                        const formatted = digits.length <= 11 ? formatCPF(digits) : formatCNPJ(digits);
+                        setProfile(prev => ({ ...prev, documento: formatted }));
+                        if (digits.length === 11) setDocumentoValido(validateCPF(digits));
+                        else if (digits.length === 14) setDocumentoValido(validateCNPJ(digits));
+                        else setDocumentoValido(null);
+                      }}
                       disabled={!isEditing}
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                     />
                   </div>
+                  {documentoValido === false && (
+                    <p className="mt-1 text-xs text-red-600">Documento inválido. Verifique o CPF/CNPJ informado.</p>
+                  )}
                 </div>
 
                 <div>

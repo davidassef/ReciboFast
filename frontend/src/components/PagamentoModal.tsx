@@ -6,7 +6,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, CreditCard, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Receita } from '../types/receita';
+// Tipo mínimo local para evitar dependência de '../types/receita'
+interface ReceitaResumo {
+  id: string;
+  valor: number;
+  titulo: string;
+  cliente_nome?: string;
+}
 import { Pagamento, FormaPagamento, PagamentoForm, getFormaPagamentoLabel } from '../types/pagamento';
 import { formatCurrency, parseCurrency } from '../utils/formatters';
 import { usePagamentos } from '../hooks/usePagamentos';
@@ -14,13 +20,13 @@ import { usePagamentos } from '../hooks/usePagamentos';
 interface PagamentoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  receita: Receita;
+  receita: ReceitaResumo;
   onPagamentoRegistrado: (pagamento: Pagamento) => void;
   pagamentosExistentes?: Pagamento[];
 }
 
 /**
- * Modal para registrar pagamentos de receitas
+ * Modal para registrar pagamentos de rendas
  * Permite pagamento total ou parcial com diferentes formas de pagamento
  */
 export const PagamentoModal: React.FC<PagamentoModalProps> = ({
@@ -150,7 +156,7 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
           </button>
         </div>
 
-        {/* Informações da Receita */}
+        {/* Informações da Renda */}
         <div className="p-6 bg-gray-50 border-b">
           <h3 className="font-medium text-gray-900 mb-2">{receita.titulo}</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -296,7 +302,7 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
         {isPagamentoCompleto && (
           <div className="p-4 bg-green-50 border-t border-green-200">
             <p className="text-sm text-green-800 text-center">
-              ✅ Esta receita já foi paga integralmente
+              ✅ Esta renda já foi paga integralmente
             </p>
           </div>
         )}

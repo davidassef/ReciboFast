@@ -1,13 +1,12 @@
 // Autor: David Assef
 // Descrição: Layout principal com navegação por tabs
-// Data: 20-01-2025
+// Data: 05-09-2025
 // MIT License
 
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Receipt, 
   FileText, 
   CreditCard, 
   PenTool,
@@ -16,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
+import EmailVerificationBanner from './EmailVerificationBanner';
+import ErrorBoundary from './ErrorBoundary';
 
 interface TabItem {
   id: string;
@@ -31,12 +32,7 @@ const tabs: TabItem[] = [
     icon: LayoutDashboard,
     path: '/dashboard'
   },
-  {
-    id: 'receitas',
-    label: 'Receitas',
-    icon: Receipt,
-    path: '/receitas'
-  },
+  
   {
     id: 'contratos',
     label: 'Contratos',
@@ -67,6 +63,9 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, signOut } = useAuth();
 
+  const displayName = (user?.user_metadata?.full_name || user?.email || 'Usuário') as string;
+  const firstName = displayName?.split(' ')[0] || 'Usuário';
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -81,22 +80,28 @@ export const Layout: React.FC = () => {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
+            {/* Marca */}
+            <div className="flex items-center min-w-0">
+              <h1 className="text-xl font-semibold text-gray-900 whitespace-nowrap">
                 ReciboFast
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">
-                Bem-vindo, {user?.user_metadata?.full_name || user?.email || 'Usuário'}!
+            {/* Ações do usuário */}
+            <div className="flex items-center gap-3 min-w-0">
+              <span
+                className="text-sm text-gray-600 truncate max-w-[140px] sm:max-w-[240px]"
+                title={displayName}
+              >
+                Olá, {firstName}
               </span>
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors shrink-0"
                 title="Sair"
+                aria-label="Sair"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="text-sm">Sair</span>
+                <span className="text-sm hidden sm:inline">Sair</span>
               </button>
             </div>
           </div>
@@ -105,7 +110,11 @@ export const Layout: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
+        <ErrorBoundary>
+          {/* Banner de verificação de e-mail (gating de funcionalidades) */}
+          <EmailVerificationBanner />
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       {/* Bottom Navigation */}
