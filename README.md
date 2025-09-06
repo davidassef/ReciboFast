@@ -307,7 +307,7 @@ ReciboFast/
 
 ### Padrões de Código
 
-- **Frontend**: ESLint + Prettier configurados para Angular
+- **Frontend**: ESLint + Prettier configurados para React/Vite
 - **Backend**: gofmt + golint
 - **Commits**: Conventional Commits
 - **Testes**: Cobertura mínima de 80%
@@ -347,7 +347,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ## 🙏 Agradecimentos
 
 - [Supabase](https://supabase.com) pela infraestrutura BaaS
-- [Angular](https://angular.io) pelo framework frontend
+- [React](https://react.dev) e [Vite](https://vitejs.dev) pelo stack frontend
 - [Go](https://golang.org) pela linguagem backend
 - [Tailwind CSS](https://tailwindcss.com) pelo framework CSS
 - Comunidade open source pelas ferramentas e bibliotecas
