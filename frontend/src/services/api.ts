@@ -1,11 +1,12 @@
 // MIT License
 // Autor: David Assef
 // Descrição: Cliente base para chamadas à API
-// Data: 30-08-2025
+// Data: 05-09-2025
 
 // Configuração base da API
-// TODO: Implementar configuração dinâmica via variáveis de ambiente
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+// Em desenvolvimento, use caminho relativo "/api/v1" e o proxy do Vite para evitar CORS
+// Em produção, defina VITE_API_BASE_URL apontando para o backend (ex.: https://api.seudominio.com/api/v1)
+const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
 
 // Classe para gerenciar chamadas HTTP
 export class ApiClient {
@@ -50,9 +51,19 @@ export class ApiClient {
 
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
       
+      const contentType = response.headers.get('content-type') || '';
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        // tenta extrair mensagem de erro JSON; se não for JSON, usa status
+        const errorData = contentType.includes('application/json')
+          ? await response.json().catch(() => ({}))
+          : {};
         throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // respostas 200 devem ser JSON nos endpoints da API; caso contrário, trate como erro
+      if (!contentType.includes('application/json')) {
+        throw new Error('Resposta da API não está em JSON. Verifique o endpoint e o proxy.');
       }
 
       const data = await response.json();
@@ -98,7 +109,8 @@ export class ApiClient {
   // Método para verificar conectividade
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL.replace('/api/v1', '')}/healthz`);
+      // Sempre usar rota relativa para passar pelo proxy do Vite em dev
+      const response = await fetch('/healthz', { cache: 'no-store' });
       return response.ok;
     } catch {
       return false;
@@ -130,22 +142,22 @@ export interface PaginatedResponse<T> {
 
 // Utilitários para tratamento de erros
 export const handleApiError = (error: string | null): string => {
-  if (!error) return '';
+  if (!error) return 'Erro desconhecido';
   
-  // Mapear erros comuns
-  if (error.includes('401') || error.includes('Unauthorized')) {
+  // Mapear erros comuns para mensagens amigáveis
+  if (error.includes('401') || error.includes('Não autorizado')) {
     return 'Sessão expirada. Faça login novamente.';
-    }
+  }
   
-  if (error.includes('403') || error.includes('Forbidden')) {
+  if (error.includes('403') || error.includes('Acesso negado')) {
     return 'Você não tem permissão para realizar esta ação.';
   }
   
-  if (error.includes('404') || error.includes('Not Found')) {
+  if (error.includes('404') || error.includes('Não encontrado')) {
     return 'Recurso não encontrado.';
   }
   
-  if (error.includes('500') || error.includes('Internal Server Error')) {
+  if (error.includes('500') || error.includes('Erro interno do servidor')) {
     return 'Erro interno do servidor. Tente novamente mais tarde.';
   }
   

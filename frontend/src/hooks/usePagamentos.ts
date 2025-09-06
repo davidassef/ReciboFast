@@ -1,7 +1,7 @@
 // MIT License
 // Autor: David Assef
 // Descrição: Hook personalizado para gerenciar CRUD de pagamentos via API com fallback
-// Data: 31-08-2025
+// Data: 05-09-2025
 
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -65,7 +65,7 @@ export const usePagamentos = () => {
       // Tenta fallback offline
       return await registrarPagamentoOffline(receitaId, pagamentoData);
     }
-  }, [updateState, state.pagamentos, registrarPagamentoOffline]);
+  }, [updateState, state.pagamentos]);
 
   // Registra pagamento offline (fallback)
   const registrarPagamentoOffline = useCallback(async (receitaId: string, pagamentoData: PagamentoForm): Promise<Pagamento> => {
@@ -96,7 +96,7 @@ export const usePagamentos = () => {
       console.error('Erro ao buscar pagamentos:', error);
       return await buscarPagamentosOffline(receitaId);
     }
-  }, [updateState, buscarPagamentosOffline]);
+  }, [updateState]);
 
   // Busca pagamentos offline (fallback)
   const buscarPagamentosOffline = useCallback(async (receitaId: string): Promise<Pagamento[]> => {
@@ -128,7 +128,7 @@ export const usePagamentos = () => {
       toast.error(errorMessage);
       await cancelarPagamentoOffline(pagamentoId);
     }
-  }, [updateState, state.pagamentos, cancelarPagamentoOffline]);
+  }, [updateState, state.pagamentos]);
 
   // Cancela pagamento offline (fallback)
   const cancelarPagamentoOffline = useCallback(async (pagamentoId: string): Promise<void> => {
@@ -174,7 +174,7 @@ export const usePagamentos = () => {
       console.error('Erro ao buscar estatísticas:', error);
       return await buscarEstatisticasOffline();
     }
-  }, [updateState, buscarEstatisticasOffline]);
+  }, [updateState]);
 
   // Busca histórico offline (fallback)
   const buscarHistoricoOffline = useCallback(async (receitaId?: string): Promise<PagamentoHistorico[]> => {
@@ -205,7 +205,7 @@ export const usePagamentos = () => {
       console.error('Erro ao buscar histórico:', error);
       return await buscarHistoricoOffline(receitaId);
     }
-  }, [buscarHistoricoOffline]);
+  }, []);
 
   return {
     ...state,

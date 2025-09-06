@@ -1,10 +1,9 @@
 // Autor: David Assef
 // Descrição: Hook para gerenciar dados do dashboard
-// Data: 20-01-2025
+// Data: 05-09-2025
 // MIT License
 
 import { useState, useEffect, useCallback } from 'react';
-import { useReceitas } from './useReceitas';
 import { usePagamentos } from './usePagamentos';
 
 export interface DashboardStats {
@@ -46,7 +45,6 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { stats: receitasStats, buscarEstatisticas } = useReceitas();
   const { buscarEstatisticas: buscarEstatisticasPagamentos } = usePagamentos();
 
   /**
@@ -57,24 +55,25 @@ export function useDashboard() {
       setLoading(true);
       setError(null);
 
-      // Buscar estatísticas de receitas
-      await buscarEstatisticas();
-      
-      // Buscar estatísticas de pagamentos
+      // Buscar estatísticas de pagamentos; estatísticas de "rendas" ainda não disponíveis
       const estatisticasPagamentos = await buscarEstatisticasPagamentos();
 
       // TODO: Implementar cálculos reais baseados nos dados
       // Por enquanto, usar dados das estatísticas existentes
       const novasStats: DashboardStats = {
-        receita_total: receitasStats?.valor_total || 0,
-        receita_mes_atual: receitasStats?.valor_mes_atual || 0,
-        receitas_pendentes: receitasStats?.receitas_pendentes || 0,
-        receitas_pagas: receitasStats?.receitas_pagas || 0,
-        total_receitas: receitasStats?.total_receitas || 0,
-        pagamentos_mes: estatisticasPagamentos?.pagamentos_mes || 0,
-        crescimento_receita: calcularCrescimento(receitasStats?.valor_mes_atual || 0, receitasStats?.valor_mes_anterior || 0),
-        crescimento_receitas: calcularCrescimento(receitasStats?.total_receitas || 0, receitasStats?.total_receitas_anterior || 0),
-        crescimento_pagamentos: calcularCrescimento(estatisticasPagamentos?.pagamentos_mes || 0, estatisticasPagamentos?.pagamentos_mes_anterior || 0)
+        // Mapeia para campos existentes em ReceitasStats
+        receita_total: 0,
+        // Sem dados consolidados de rendas por enquanto
+        receita_mes_atual: 0,
+        receitas_pendentes: 0,
+        receitas_pagas: 0,
+        total_receitas: 0,
+        // Sem campo mensal em PagamentoStats; usar total_pagamentos como aproximação
+        pagamentos_mes: estatisticasPagamentos?.total_pagamentos || 0,
+        // Crescimentos não disponíveis com os tipos atuais; manter 0 até termos base histórica
+        crescimento_receita: 0,
+        crescimento_receitas: 0,
+        crescimento_pagamentos: 0
       };
 
       setStats(novasStats);
@@ -88,7 +87,7 @@ export function useDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [buscarEstatisticas, buscarEstatisticasPagamentos, receitasStats]);
+  }, [buscarEstatisticasPagamentos]);
 
   /**
    * Calcula percentual de crescimento
@@ -109,8 +108,8 @@ export function useDashboard() {
         {
           id: '1',
           type: 'receita',
-          action: 'Receita criada',
-          description: 'Nova receita de consultoria',
+          action: 'Renda criada',
+          description: 'Nova renda de consultoria',
           time: '2 horas atrás',
           amount: 500.00,
           created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
@@ -119,7 +118,7 @@ export function useDashboard() {
           id: '2',
           type: 'pagamento',
           action: 'Pagamento recebido',
-          description: 'Pagamento da receita #001',
+          description: 'Pagamento da renda #001',
           time: '1 dia atrás',
           amount: 750.00,
           created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -127,8 +126,8 @@ export function useDashboard() {
         {
           id: '3',
           type: 'receita',
-          action: 'Receita atualizada',
-          description: 'Receita de desenvolvimento web',
+          action: 'Renda atualizada',
+          description: 'Renda de desenvolvimento web',
           time: '2 dias atrás',
           amount: 2000.00,
           created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
@@ -177,12 +176,7 @@ export function useDashboard() {
     calcularEstatisticas();
   }, [calcularEstatisticas]);
 
-  // Recarregar quando as estatísticas de receitas mudarem
-  useEffect(() => {
-    if (receitasStats) {
-      calcularEstatisticas();
-    }
-  }, [receitasStats, calcularEstatisticas]);
+  // Removido efeito adicional para evitar re-render loop; apenas cálculo inicial
 
   return {
     stats,

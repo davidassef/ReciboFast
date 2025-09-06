@@ -22,16 +22,16 @@ interface ErrorObject {
 
 // Códigos de erro comuns do OAuth
 export const OAUTH_ERROR_CODES = {
-  ACCESS_DENIED: 'access_denied',
-  INVALID_REQUEST: 'invalid_request',
-  UNAUTHORIZED_CLIENT: 'unauthorized_client',
-  UNSUPPORTED_RESPONSE_TYPE: 'unsupported_response_type',
-  INVALID_SCOPE: 'invalid_scope',
-  SERVER_ERROR: 'server_error',
-  TEMPORARILY_UNAVAILABLE: 'temporarily_unavailable',
+  ACCESS_DENIED: 'acesso_negado',
+  INVALID_REQUEST: 'requisicao_invalida',
+  UNAUTHORIZED_CLIENT: 'cliente_nao_autorizado',
+  UNSUPPORTED_RESPONSE_TYPE: 'tipo_resposta_nao_suportado',
+  INVALID_SCOPE: 'escopo_invalido',
+  SERVER_ERROR: 'erro_servidor',
+  TEMPORARILY_UNAVAILABLE: 'temporariamente_indisponivel',
   POPUP_BLOCKED: 'popup_blocked',
-  NETWORK_ERROR: 'network_error',
-  TIMEOUT: 'timeout'
+  NETWORK_ERROR: 'erro_rede',
+  TIMEOUT: 'tempo_esgotado'
 } as const;
 
 /**
@@ -99,7 +99,7 @@ export const mapOAuthError = (error: unknown): OAuthError => {
           };
         }
         
-        if (lowerMessage.includes('network') || lowerMessage.includes('connection')) {
+        if (lowerMessage.includes('network') || lowerMessage.includes('connection') || lowerMessage.includes('rede') || lowerMessage.includes('conexão')) {
           return {
             code: OAUTH_ERROR_CODES.NETWORK_ERROR,
             message: errorMessage,
@@ -107,7 +107,7 @@ export const mapOAuthError = (error: unknown): OAuthError => {
           };
         }
         
-        if (lowerMessage.includes('timeout') || lowerMessage.includes('time')) {
+        if (lowerMessage.includes('timeout') || lowerMessage.includes('time') || lowerMessage.includes('tempo')) {
           return {
             code: OAUTH_ERROR_CODES.TIMEOUT,
             message: errorMessage,
@@ -116,7 +116,7 @@ export const mapOAuthError = (error: unknown): OAuthError => {
         }
 
         return {
-          code: 'unknown_error',
+          code: 'erro_desconhecido',
           message: errorMessage,
           userMessage: 'Erro inesperado durante a autenticação. Tente novamente.'
         };
@@ -145,7 +145,7 @@ export const mapOAuthError = (error: unknown): OAuthError => {
     }
     
     return {
-      code: 'unknown_error',
+      code: 'erro_desconhecido',
       message: error,
       userMessage: 'Erro durante a autenticação. Tente novamente.'
     };
@@ -153,7 +153,7 @@ export const mapOAuthError = (error: unknown): OAuthError => {
 
   // Erro genérico
   return {
-    code: 'unknown_error',
+    code: 'erro_desconhecido',
     message: 'Erro desconhecido',
     userMessage: 'Erro inesperado durante a autenticação. Tente novamente.'
   };

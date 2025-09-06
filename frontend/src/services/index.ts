@@ -6,19 +6,7 @@
 // Cliente base da API
 export { apiClient, type ApiResponse, type PaginatedResponse } from './api';
 
-// Serviço de receitas
-export {
-  ReceitasService,
-  receitasService,
-  listReceitas,
-  getReceitaById,
-  createReceita,
-  updateReceita,
-  deleteReceita,
-  getReceitasStats,
-  searchReceitas,
-  type ListReceitasParams
-} from './receitasService';
+// Serviço de receitas removido (deprecated)
 
 // Serviço de pagamentos
 export {

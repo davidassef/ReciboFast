@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Contexto de autenticação para gerenciar estado do usuário
-// Data: 20-01-2025
+// Data: 05-09-2025
 // MIT License
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -11,13 +11,16 @@ interface AuthContextType {
   user: User | null;
   session: AuthSession | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ data: AuthSession | null; error: Error | null }>;
-  signUp: (email: string, password: string, metadata?: Record<string, unknown>) => Promise<{ data: AuthSession | null; error: Error | null }>;
-  signOut: () => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ data: AuthSession | null; error: Error | null }>;
-  resetPassword: (email: string) => Promise<{ data: unknown | null; error: Error | null }>;
-  updatePassword: (password: string) => Promise<{ data: User | null; error: Error | null }>;
-  updateProfile: (updates: Record<string, unknown>) => Promise<{ data: User | null; error: Error | null }>;
+  emailVerified: boolean;
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  signUp: (email: string, password: string, metadata?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+  signOut: () => Promise<{ error: any }>;
+  signInWithGoogle: () => Promise<{ data: any; error: any }>;
+  resetPassword: (email: string) => Promise<{ data: any; error: any }>;
+  updatePassword: (password: string) => Promise<{ data: any; error: any }>;
+  updateProfile: (updates: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+  resendEmailConfirmation: (email: string) => Promise<{ data: any; error: any }>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState<boolean>(false);
 
   useEffect(() => {
     // Verificar sessão inicial
@@ -47,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(initialSession);
         setUser(initialSession?.user || null);
       } catch (error) {
-        console.error('Erro ao obter sessão inicial:', error);
+        console.error('Erro de inicialização da autenticação:', error);
       } finally {
         setLoading(false);
       }
@@ -57,10 +61,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listener para mudanças de autenticação
     const { data: { subscription } } = auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: string, session: any) => {
         console.log('Auth state changed:', event, session);
-        setSession(session);
-        setUser(session?.user || null);
+        const currentSession = session as AuthSession | null;
+        setSession(currentSession);
+        setUser(currentSession?.user || null);
         setLoading(false);
       }
     );
@@ -69,6 +74,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscription?.unsubscribe();
     };
   }, []);
+
+  // Atualiza flag de verificação quando o usuário muda
+  useEffect(() => {
+    const verified = Boolean(user?.email_confirmed_at || (user as any)?.confirmed_at);
+    setEmailVerified(verified);
+  }, [user]);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
@@ -80,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return result;
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('Erro de login:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -93,7 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await auth.signUp(email, password, metadata);
       return result;
     } catch (error) {
-      console.error('Erro no registro:', error);
+      console.error('Erro de registro:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -108,7 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       return result;
     } catch (error) {
-      console.error('Erro no logout:', error);
+      console.error('Erro de logout:', error);
       return { error };
     } finally {
       setLoading(false);
@@ -170,10 +181,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const resendEmailConfirmation = async (email: string) => {
+    try {
+      return await auth.resendEmailConfirmation(email);
+    } catch (error) {
+      console.error('Erro ao reenviar confirmação de e-mail:', error);
+      return { data: null, error };
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const { user: currentUser } = await auth.getCurrentUser();
+      setUser(currentUser || null);
+    } catch (error) {
+      console.error('Erro ao atualizar usuário atual:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
     loading,
+    emailVerified,
     signIn,
     signUp,
     signOut,
@@ -181,6 +211,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword,
     updatePassword,
     updateProfile,
+    resendEmailConfirmation,
+    refreshUser,
   };
 
   return (
