@@ -1,22 +1,18 @@
 # MIT License
 # Autor atual: David Assef
-# Descrição: Dockerfile multi-stage do backend ReciboFast
-# Data: 29-08-2025
+# Descrição: Dockerfile para o backend ReciboFast em Go
+# Data: 03-09-2025
 
 # Stage de build
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23 AS builder
 WORKDIR /app
-ENV CGO_ENABLED=0 GO111MODULE=on
-COPY . .
+COPY go.mod go.sum ./
 RUN go mod download
-RUN go build -ldflags "-s -w" -o server ./cmd/api
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /backend ./cmd/api
 
 # Stage final minimalista
-FROM scratch
-WORKDIR /app
-COPY --from=builder /app/server /app/server
-# Certs (se necessário para HTTPS outbound)
-# COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-ENV API_PORT=8080 APP_ENV=prod
-EXPOSE 8080
-ENTRYPOINT ["/app/server"]
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /backend /backend
+CMD ["/backend"]
