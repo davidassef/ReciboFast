@@ -1,32 +1,36 @@
+// Autor: David
+// Descrição: Configuração Vite para o frontend do ReciboFast, incluindo plugins para React e PWA.
+// Data: 04-09-2025
+// Licença: MIT License
+
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
-import { traeBadgePlugin } from 'vite-plugin-trae-solo-badge';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      // Proxy para API em desenvolvimento: evita CORS
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        // sem rewrite: já usamos caminho base '/api/v1' no cliente
+      },
+      // Healthcheck do backend
+      '/healthz': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     sourcemap: 'hidden',
   },
   plugins: [
-    react({
-      babel: {
-        plugins: [
-          'react-dev-locator',
-        ],
-      },
-    }),
-    traeBadgePlugin({
-      variant: 'dark',
-      position: 'bottom-right',
-      prodOnly: true,
-      clickable: true,
-      clickUrl: 'https://www.trae.ai/solo?showJoin=1',
-      autoTheme: true,
-      autoThemeTarget: '#root'
-    }),
+    react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -70,9 +74,6 @@ export default defineConfig({
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
-              },
-              cacheKeyWillBeUsed: async ({ request }) => {
-                return request.url
               }
             }
           }
@@ -88,3 +89,4 @@ export default defineConfig({
     css: true,
   },
 })
+
