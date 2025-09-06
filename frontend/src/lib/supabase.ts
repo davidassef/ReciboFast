@@ -1,12 +1,20 @@
 // Autor: David Assef
 // Descrição: Configuração do cliente Supabase para o frontend
-// Data: 20-01-2025
+// Data: 05-09-2025
 // MIT License
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://macfrgskngbteazkatdj.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hY2ZyZ3NrbmdidGVhemthdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0ODY4NTMsImV4cCI6MjA3MjA2Mjg1M30.74wm5i4iMSegPwJYsPQpM7o_wzdZ7OwAgU5J83JQcns';
+// Lê configurações do Vite (.env)
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  // Falha rápida para facilitar configuração correta em dev
+  // eslint-disable-next-line no-console
+  console.error('[Supabase] Variáveis de ambiente não configuradas. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.local');
+  throw new Error('Configuração do Supabase ausente: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -14,6 +22,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface User {
   id: string;
   email?: string;
+  email_confirmed_at?: string | null;
+  confirmed_at?: string | null;
   user_metadata?: {
     full_name?: string;
     avatar_url?: string;
@@ -88,6 +98,15 @@ export const auth = {
   resetPassword: async (email: string) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { data, error };
+  },
+
+  // Reenviar e-mail de confirmação
+  resendEmailConfirmation: async (email: string) => {
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
     });
     return { data, error };
   },
