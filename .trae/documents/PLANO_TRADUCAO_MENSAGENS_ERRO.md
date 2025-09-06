@@ -1,7 +1,7 @@
 # Plano de Tradução de Mensagens de Erro
 
 **Autor:** David Assef  
-**Data:** 21-01-2025  
+**Data:** 06-09-2025  
 **Descrição:** Plano detalhado para tradução de mensagens de erro em inglês para português no projeto ReciboFast  
 **Licença:** MIT License
 
