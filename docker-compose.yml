@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
-# Descrição: Compose de desenvolvimento do ReciboFast (backend + proxy opcional)
-# Data: 29-08-2025
+# Descrição: Compose de desenvolvimento do ReciboFast (backend e frontend)
+# Data: 03-09-2025
 
 version: "3.9"
 services:
@@ -17,5 +17,18 @@ services:
         limits:
           cpus: "0.50"
           memory: 256M
+    volumes:
+      - ./supabase:/supabase  # Montar migrações para acesso, se necessário
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://backend:8080
 
 # Frontend e proxy reverso podem ser adicionados posteriormente.
