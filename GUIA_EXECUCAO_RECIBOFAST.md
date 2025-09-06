@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Guia técnico para execução e setup do projeto ReciboFast
-# Data: 04-09-2025 - Atualizado PORT, /healthz e variáveis de ambiente
+# Data: 06-09-2025 - Alinha React + Vite + Vitest; atualiza comandos
 
 # GUIA DE EXECUÇÃO DO PROJETO — ReciboFast
 
@@ -10,7 +10,7 @@ Este guia orienta o setup local, variáveis de ambiente, ferramentas, padrões d
 ## 1. Pré-requisitos ✅ CONFIGURADO
 - Git, Docker Desktop (última estável) ✅
 - Node.js 20+ e npm 10+ (ou pnpm 9+) ✅
-- Angular CLI 18+, Ionic CLI 7+ ✅
+- Vite 5+ e Vitest ✅
 - Go 1.23+ ✅
 - Conta e projeto Supabase (URL e Anon Key), buckets de Storage e Auth ativado (Google) ✅
 - Opcional: k6 (testes de performance), golangci-lint, OpenSSL ✅
@@ -38,7 +38,7 @@ Observações:
 - SUPABASE JWT: preferir verificação via JWKS (env JWKS_URL=https://<project>.supabase.co/auth/v1/jwks) no backend.
 - Nunca commitar chaves; usar gerenciador de segredos no deploy.
 
-## 3. Setup do Frontend (Angular + Ionic + Tailwind) 🔄 PRÓXIMA FASE
+## 3. Setup do Frontend (React + Vite + Tailwind) ✅ FUNCIONAL
 - Inicialização do projeto (aguardando):
 ```bash
 # Criar app Angular com roteamento e standalone (ajustar conforme preferência)
@@ -65,10 +65,10 @@ Observações:
 - Execução em desenvolvimento:
 ```bash
 # npm install
-# npm run start
+# npm run dev
 ```
 
-**Status:** Aguardando conclusão da Fase 2 para iniciar
+**Status:** ✅ Funcional com React + Vite
 
 ## 4. Setup do Backend (Golang) ✅ FUNCIONAL
 - Estrutura implementada ✅:

@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Plano de execução com checklist e acompanhamento de progresso do ReciboFast
-# Data: 30-08-2025
+# Data: 06-09-2025
 
 # PLANO DE EXECUÇÃO — ReciboFast
 
@@ -203,7 +203,7 @@ Entrega: build reproduzível e deploy estável
 ## Fase 10 — Qualidade e Performance
 [ ] Testes unitários/chave (front/back)
 [ ] Testes k6 (latência p50/p95) nos fluxos críticos
-[ ] Perf audit do PWA (Lighthouse) e budgets do Angular
+[ ] Perf audit do PWA (Lighthouse) e budgets do Vite/React
 
 Entrega: critérios de qualidade aprovados
 

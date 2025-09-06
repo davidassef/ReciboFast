@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: README do projeto ReciboFast
-# Data: 04-09-2025
+# Data: 06-09-2025
 
 # 🧾 ReciboFast
 
@@ -58,13 +58,13 @@ O **ReciboFast** é uma Progressive Web Application (PWA) moderna desenvolvida p
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │    Backend      │    │   Supabase      │
-│   (Angular PWA) │◄──►│   (Go API)      │◄──►│  (PostgreSQL)   │
+│   (React PWA)   │◄──►│   (Go API)      │◄──►│  (PostgreSQL)   │
 │                 │    │                 │    │                 │
-│ • Angular 18    │    │ • Chi Router    │    │ • Database      │
-│ • Ionic 7       │    │ • JWT Auth      │    │ • Auth          │
+│ • React 18      │    │ • Chi Router    │    │ • Database      │
+│ • Vite          │    │ • JWT Auth      │    │ • Auth          │
 │ • TypeScript    │    │ • Rate Limit    │    │ • Storage       │
-│ • Tailwind      │    │ • Logging       │    │ • RLS           │
-│ • PWA           │    │                 │    │                 │
+│ • Tailwind CSS  │    │ • Logging       │    │ • RLS           │
+│ • PWA + Vitest  │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -190,14 +190,11 @@ docker-compose up -d
 ```bash
 cd frontend
 
-# Executar testes
-ng test
-
-# Testes e2e
-ng e2e
+# Testes unitários (Vitest)
+npx vitest
 
 # Lint
-ng lint
+npm run lint
 ```
 
 ### Backend
@@ -248,16 +245,16 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```
 ReciboFast/
-├── frontend/                 # Aplicação Angular + Ionic
+├── frontend/                 # Aplicação React + Vite
 │   ├── src/
-│   │   ├── app/
-│   │   │   ├── components/   # Componentes reutilizáveis
-│   │   │   ├── pages/       # Páginas da aplicação
-│   │   │   ├── services/    # Serviços de API
-│   │   │   └── ...           # Módulos e rotas do Angular
-│   │   ├── assets/          # Arquivos estáticos
-│   │   └── environments/   # Configurações de ambiente
-│   └── ...                  # Configurações do Angular CLI
+│   │   ├── components/      # Componentes reutilizáveis
+│   │   ├── pages/           # Páginas da aplicação
+│   │   ├── services/        # Chamadas à API
+│   │   ├── hooks/           # Hooks personalizados
+│   │   ├── contexts/        # Estados globais
+│   │   ├── utils/           # Funções utilitárias
+│   │   └── assets/          # Arquivos estáticos
+│   └── public/              # Assets públicos do Vite
 ├── backend/                 # API Go
 │   ├── cmd/               # Ponto de entrada
 │   ├── internal/
@@ -276,11 +273,11 @@ ReciboFast/
 
 ### Documentos Técnicos
 
-- 📋 [PRD - Requisitos de Produto](.trae/documents/PRD_RECIBOFAST.md)
+- 📋 [PRD - Requisitos de Produto](.trae/documents/PRD_SISTEMA_ASSINATURAS_RECIBOS.md)
 - 🏗️ [Arquitetura Técnica](.trae/documents/ARQUITETURA_TECNICA_RECIBOFAST.md)
-- 📊 [Status do Projeto](.trae/documents/STATUS_PROJETO_RECIBOFAST.md)
+- 📊 [Status do Projeto](STATUS_PROJETO_RECIBOFAST.md)
 - 🗓️ [Plano de Execução](PLANO_EXECUCAO_RECIBOFAST.md)
-- 🔄 [Próximos Passos](.trae/documents/PROXIMOS_PASSOS_RECIBOFAST.md)
+- 🔄 [Próximos Passos](.trae/documents/ITENS_PENDENTES_PROJETO_RECIBOFAST.md)
 
 ## 🔐 Segurança
 
