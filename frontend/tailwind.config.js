@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import forms from '@tailwindcss/forms';
+import typography from '@tailwindcss/typography';
 
 export default {
   darkMode: "class",
@@ -13,6 +15,20 @@ export default {
     },
     extend: {
       colors: {
+        // Accent Colors (para elementos decorativos)
+        accent: {
+          50: "#f5f3ff",
+          100: "#ede9fe",
+          200: "#ddd6fe",
+          300: "#c4b5fd",
+          400: "#a78bfa",
+          500: "#8b5cf6",
+          600: "#7c3aed",
+          700: "#6d28d9",
+          800: "#5b21b6",
+          900: "#4c1d95",
+          950: "#2e1065",
+        },
         // Primary Colors
         primary: {
           50: "#f0f9ff",
@@ -134,10 +150,20 @@ export default {
         "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
         inner: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
       },
+      // Animações padrão + aquelas usadas nos componentes
       animation: {
+        // nomes com hífen (já existentes)
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.3s ease-out",
         "slide-down": "slideDown 0.3s ease-out",
+        // nomes camelCase usados em classes como animate-fadeIn
+        fadeIn: "fadeIn 0.5s ease-in-out",
+        slideInUp: "slideUp 0.4s ease-out",
+        slideInDown: "slideDown 0.4s ease-out",
+        slideInLeft: "slideInLeft 0.4s ease-out",
+        slideInRight: "slideInRight 0.4s ease-out",
+        scaleIn: "scaleIn 0.4s ease-out",
+        blob: "blob 7s infinite",
       },
       keyframes: {
         fadeIn: {
@@ -152,11 +178,30 @@ export default {
           "0%": { transform: "translateY(-10px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
+        slideInLeft: {
+          "0%": { transform: "translateX(-12px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        slideInRight: {
+          "0%": { transform: "translateX(12px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.96)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        blob: {
+          "0%": { transform: "translate(0px, 0px) scale(1)" },
+          "33%": { transform: "translate(10px, -15px) scale(1.05)" },
+          "66%": { transform: "translate(-15px, 8px) scale(0.98)" },
+          "100%": { transform: "translate(0px, 0px) scale(1)" },
+        },
       },
     },
   },
   plugins: [
-    require("@tailwindcss/forms"),
-    require("@tailwindcss/typography"),
+    forms,
+    typography,
   ],
 };
+
