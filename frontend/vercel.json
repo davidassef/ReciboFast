@@ -14,8 +14,8 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://RENDER_BACKEND_URL/api/$1" },
-    { "source": "/healthz", "destination": "https://RENDER_BACKEND_URL/healthz" },
+    { "source": "/api/(.*)", "destination": "https://recibofast.onrender.com/api/$1" },
+    { "source": "/healthz", "destination": "https://recibofast.onrender.com/healthz" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -9,14 +9,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Falha rápida para facilitar configuração correta em dev
-  // eslint-disable-next-line no-console
-  console.error('[Supabase] Variáveis de ambiente não configuradas. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.local');
-  throw new Error('Configuração do Supabase ausente: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY');
-}
+// Em produção, evite crash do app por falta de env — exponha flag e stub que lança ao usar.
+export const SUPABASE_READY = Boolean(supabaseUrl && supabaseAnonKey);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = SUPABASE_READY
+  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  : (new Proxy({}, {
+      get() {
+        // eslint-disable-next-line no-console
+        console.error('[Supabase] Variáveis ausentes. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no provedor de deploy.');
+        throw new Error('Supabase não configurado (VITE_SUPABASE_URL/ANON_KEY ausentes)');
+      }
+    }) as any);
 
 // Tipos para autenticação
 export interface User {
