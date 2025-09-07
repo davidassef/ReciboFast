@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePagamentos } from './usePagamentos';
+import { supabase } from '../lib/supabase';
 
 export interface DashboardStats {
   receita_total: number;
@@ -102,41 +103,60 @@ export function useDashboard() {
    */
   const buscarAtividadeRecente = async () => {
     try {
-      // TODO: Implementar busca real de atividade recente
-      // Por enquanto, usar dados mock
-      const atividadeMock: RecentActivity[] = [
-        {
-          id: '1',
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setRecentActivity([]); return; }
+
+      // Buscar últimas rendas (rf_incomes)
+      const { data: incomes, error: incErr } = await supabase
+        .from('rf_incomes')
+        .select('id, valor, created_at, categoria, competencia, status')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (incErr) console.warn('Falha ao buscar rendas recentes:', incErr.message);
+
+      // Buscar últimos pagamentos (rf_payments) juntando valor e pago_em
+      const { data: payments, error: payErr } = await supabase
+        .from('rf_payments')
+        .select('id, valor, pago_em, created_at, income_id')
+        .order('pago_em', { ascending: false })
+        .limit(5);
+
+      if (payErr) console.warn('Falha ao buscar pagamentos recentes:', payErr.message);
+
+      const recent: RecentActivity[] = [];
+
+      (incomes || []).forEach((inc: any) => {
+        recent.push({
+          id: inc.id,
           type: 'receita',
           action: 'Renda criada',
-          description: 'Nova renda de consultoria',
-          time: '2 horas atrás',
-          amount: 500.00,
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '2',
+          description: inc.categoria ? `${inc.categoria} - competência ${inc.competencia || ''}`.trim() : 'Nova renda',
+          time: '',
+          amount: Number(inc.valor) || 0,
+          created_at: inc.created_at || new Date().toISOString(),
+        });
+      });
+
+      (payments || []).forEach((p: any) => {
+        recent.push({
+          id: p.id,
           type: 'pagamento',
           action: 'Pagamento recebido',
-          description: 'Pagamento da renda #001',
-          time: '1 dia atrás',
-          amount: 750.00,
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '3',
-          type: 'receita',
-          action: 'Renda atualizada',
-          description: 'Renda de desenvolvimento web',
-          time: '2 dias atrás',
-          amount: 2000.00,
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-      
-      setRecentActivity(atividadeMock);
+          description: p.income_id ? `Pagamento vinculado à renda ${p.income_id}` : 'Pagamento registrado',
+          time: '',
+          amount: Number(p.valor) || 0,
+          created_at: p.pago_em || p.created_at || new Date().toISOString(),
+        });
+      });
+
+      // Ordenar por data decrescente e limitar a 10 itens
+      recent.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setRecentActivity(recent.slice(0, 10));
     } catch (err) {
       console.error('Erro ao buscar atividade recente:', err);
+      setRecentActivity([]);
     }
   };
 
