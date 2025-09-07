@@ -1,0 +1,33 @@
+# Autor: David Assef
+# Descrição: Normalização de finais de linha e atributos de texto
+# Data: 07-09-2025
+# MIT License
+
+# Normaliza textos por padrão conforme SO do usuário
+* text=auto
+
+# Força LF para arquivos de código (evita problemas em CI/Linux)
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.cjs text eol=lf
+*.mjs text eol=lf
+
+# Binários/imagens não são normalizados
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
