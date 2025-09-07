@@ -93,6 +93,20 @@ const Recibos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [recibos, setRecibos] = useState<Recibo[]>([]);
+
+  // Persistência local simples
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('recibos');
+      if (saved) setRecibos(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('recibos', JSON.stringify(recibos));
+    } catch {}
+  }, [recibos]);
   const [showNovoRecibo, setShowNovoRecibo] = useState(false);
   const [novoRecibo, setNovoRecibo] = useState<Partial<Recibo>>({
     numero: '',
@@ -264,10 +278,14 @@ const Recibos: React.FC = () => {
       try {
         const { data, error } = await receiptsApi.list(1, 50);
         if (error || !data) {
-          setRecibos([]);
+          // mantém dados locais (offline/localStorage)
           return;
         }
         const items = Array.isArray(data.items) ? data.items : [];
+        if (items.length === 0) {
+          // não sobrescreve dados locais quando backend está vazio
+          return;
+        }
         const mapped: Recibo[] = items.map((it: any) => {
           const numeroStr = typeof it.numero === 'number' ? `RB-${String(it.numero).padStart(3,'0')}` : (it.numero || 'RB-—');
           const dateStr: string = (it.emitido_em || it.created_at || '').slice(0,10);
@@ -289,10 +307,15 @@ const Recibos: React.FC = () => {
             issuerDocumento: it.issuer_document || undefined,
           } as Recibo;
         });
-        setRecibos(mapped);
+        // Mescla com dados locais existentes para não perder itens criados offline
+        setRecibos((prev) => {
+          const byId = new Map(prev.map((p) => [p.id, p]));
+          mapped.forEach((m) => byId.set(m.id, m));
+          return Array.from(byId.values());
+        });
       } catch (err) {
         console.warn('Falha ao carregar recibos do backend:', err);
-        setRecibos([]);
+        // mantém dados locais
       }
     };
     load();

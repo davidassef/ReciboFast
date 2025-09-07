@@ -116,6 +116,20 @@ const Contratos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [contratos, setContratos] = useState<Contrato[]>([]);
+
+  // Persistência local simples (localStorage)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('contratos');
+      if (saved) setContratos(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('contratos', JSON.stringify(contratos));
+    } catch {}
+  }, [contratos]);
   const [showNovoContrato, setShowNovoContrato] = useState(false);
   const [novoContrato, setNovoContrato] = useState<Partial<Contrato>>({
     numero: '',
