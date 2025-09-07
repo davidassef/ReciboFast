@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 08 seguranca autenticacao
+# Data: 07-09-2025
+
 # 🔐 Segurança e Autenticação - Backend ReciboFast
 
 **Autor:** David Assef  

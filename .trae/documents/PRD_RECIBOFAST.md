@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Documento de Requisitos de Produto (PRD) do ReciboFast
-# Data: 30-08-2025
+# Data: 07-09-2025
 
 # 📋 DOCUMENTO DE REQUISITOS DE PRODUTO - RECIBOFAST
 

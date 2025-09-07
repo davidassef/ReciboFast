@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Documento técnico para implementação completa do sistema de assinaturas digitais
-# Data: 30-01-2025
+# Data: 07-09-2025
 
 # 📝 SISTEMA DE ASSINATURAS DIGITAIS - RECIBOFAST
 

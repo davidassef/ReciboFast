@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Guia técnico para execução e setup do projeto ReciboFast
-# Data: 06-09-2025 - Alinha React + Vite + Vitest; atualiza comandos
+# Data: 07-09-2025
 
 # GUIA DE EXECUÇÃO DO PROJETO — ReciboFast
 
@@ -25,7 +25,7 @@ Frontend (.env.local):
 
 Backend (.env):
 - PORT=8080
-- ALLOWED_ORIGINS=http://localhost:4200
+- ALLOWED_ORIGINS=http://localhost:5173
 - SUPABASE_URL=https://<project>.supabase.co
 - JWKS_URL=https://<project>.supabase.co/auth/v1/jwks
 - DATABASE_URL="postgres://usuario:senha@host:5432/postgres?sslmode=require&pool_max_conns=10"
@@ -39,36 +39,18 @@ Observações:
 - Nunca commitar chaves; usar gerenciador de segredos no deploy.
 
 ## 3. Setup do Frontend (React + Vite + Tailwind) ✅ FUNCIONAL
-- Inicialização do projeto (aguardando):
-```bash
-# Criar app Angular com roteamento e standalone (ajustar conforme preferência)
-# ng new recibofast --routing --style=css --standalone
-
-# Adicionar Ionic no projeto
-# cd recibofast && ng add @ionic/angular
-
-# Adicionar Tailwind
-# npm install -D tailwindcss postcss autoprefixer
-# npx tailwindcss init -p
-# Configure tailwind.config.js e inclua diretivas @tailwind no styles.css
-
-# Instalar Dexie e supabase-js
-# npm install dexie @supabase/supabase-js
-
-# Instalar libs de PDF client-side (opcional)
-# npm install pdf-lib jspdf qrcode
-```
-- PWA:
-```bash
-# ng add @angular/pwa
-```
+- Dependências principais já configuradas: React 18 + TypeScript + Vite + Tailwind + PWA
 - Execução em desenvolvimento:
 ```bash
-# npm install
-# npm run dev
+cd frontend
+npm install
+npm run dev
+# App em http://localhost:5173
 ```
 
-**Status:** ✅ Funcional com React + Vite
+Notas:
+- Proxy do Vite mapeado para "/api" e "/healthz"; `VITE_API_BASE_URL` pode apontar para "/api/v1".
+- Dashboard lê Atividade Recente real do Supabase (rendas criadas e pagamentos recebidos).
 
 ## 4. Setup do Backend (Golang) ✅ FUNCIONAL
 - Estrutura implementada ✅:
@@ -193,6 +175,6 @@ Resposta (201):
 ## 12. Referências
 - `ARQUITETURA_RECIBOFAST` (na raiz)
 - Documentação Supabase (RLS, Storage, Auth)
-- Angular, Ionic e Tailwind
+- React, Vite e Tailwind
 
 — Fim —

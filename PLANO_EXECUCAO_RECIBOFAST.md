@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Plano de execução com checklist e acompanhamento de progresso do ReciboFast
-# Data: 06-09-2025
+# Data: 07-09-2025
 
 # PLANO DE EXECUÇÃO — ReciboFast
 
@@ -118,10 +118,9 @@ Entrega: fluxo financeiro básico funcionando ✅
 [x] Ajustar usePagamentos para usar endpoints /payments e /incomes/{id}/payments
 [x] Validar typecheck do projeto sem erros
 [x] Corrigir problemas de lint em arquivos legados
-[x] Criar dashboard com resumos financeiros
-[x] Testes de integração frontend-backend
-[x] Configurar repositório GitHub com branch main
-[x] Atualizar documentação completa (PRD, Arquitetura, README)
+[x] Criar dashboard com resumos financeiros e atividade recente real
+[x] Testes de integração frontend-backend validados
+[x] Atualizar documentação completa (PRD, Arquitetura, README, GUIA_EXECUCAO)
 
 Entrega: integração completa frontend-backend para pagamentos ✅
 
@@ -143,14 +142,13 @@ Entrega: integração completa frontend-backend para pagamentos ✅
 - ✅ Mapeadores DTO implementados para conversão de dados
 - ✅ Hook usePagamentos ajustado para rotas /payments (POST) e /incomes/{id}/payments (GET)
 - ✅ Typecheck do projeto aprovado sem erros de tipo
-- ✅ Correção de problemas de lint em arquivos legados
-- ✅ Dashboard implementado com resumos financeiros e hook useDashboard
-- ✅ Testes de integração melhorados e corrigidos
+- ✅ Correção completa de problemas de lint em arquivos legados
+- ✅ Dashboard implementado com resumos financeiros e atividade recente real
+- ✅ Testes de integração frontend-backend validados
 - ✅ Repositório GitHub configurado com branch main
-- ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README)
+- ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README, GUIA_EXECUCAO)
 
-## Fase 6 — Assinaturas e Recibos 🎯 PRÓXIMA ETAPA
-
+## Fase 6 — Assinaturas e Recibos ✅ PARCIALMENTE CONCLUÍDA
 ### 6.1 — Sistema de Assinaturas
 [ ] Upload de PNG (validação MIME e dimensões máx. 2MB)
 [ ] Armazenamento em bucket privado `signatures` com metadados
@@ -160,14 +158,14 @@ Entrega: integração completa frontend-backend para pagamentos ✅
 
 **Entrega 6.1**: assinatura pronta para uso nos recibos
 
-### 6.2 — Geração de Recibos
-[ ] Template paisagem moderno (PDF client-side com jsPDF)
-[ ] Aplicação de assinatura proporcional e posicionamento
-[ ] Registro de recibo com hash SHA-256 e metadados
-[ ] Upload opcional do PDF no bucket `receipts`
-[ ] QRCode para verificação de autenticidade
-[ ] Campos dinâmicos (locatário, valor, competência, observações)
-[ ] Preview antes da geração final
+### 6.2 — Geração de Recibos ✅ PARCIALMENTE CONCLUÍDA
+[x] Template paisagem moderno (PDF client-side com jsPDF)
+[x] Aplicação de assinatura proporcional e posicionamento
+[x] Registro de recibo com hash SHA-256 e metadados
+[x] Upload opcional do PDF no bucket `receipts`
+[x] QRCode para verificação de autenticidade
+[x] Campos dinâmicos (locatário, valor, competência, observações)
+[x] Preview antes da geração final
 
 **Entrega 6.2**: geração e download/compartilhamento de recibos
 
@@ -177,6 +175,11 @@ Entrega: integração completa frontend-backend para pagamentos ✅
 - QRCode funcional para verificação
 - Armazenamento seguro com RLS
 - Interface intuitiva para usuário final
+
+### Progresso Adicional Fase 6:
+[x] Remoção completa do conceito de vencimento em Recibos
+[x] Ajuste de UI para 3 colunas nos cards de resumo
+[x] Integração de assinaturas padrão no fluxo de Recibos
 
 ## Fase 7 — Sincronização e Offline
 [ ] Endpoint incremental estável (cursor, since, ETag)
@@ -258,10 +261,10 @@ Entrega: critérios de qualidade aprovados
   - ✅ Hook usePagamentos ajustado para usar endpoints do backend real
   - ✅ Typecheck do projeto aprovado sem erros de tipo
   - ✅ Correção completa de problemas de lint em arquivos legados
-  - ✅ Dashboard implementado com resumos financeiros e hook useDashboard
+  - ✅ Dashboard implementado com resumos financeiros e atividade recente real
   - ✅ Testes de integração frontend-backend validados
   - ✅ Repositório GitHub configurado com branch main
-  - ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README)
+  - ✅ Documentação técnica completa atualizada (PRD, Arquitetura, README, GUIA_EXECUCAO)
   - ✅ Arquivo .gitignore otimizado para projetos React/Go
   - 🎯 Próximo: Iniciar Fase 6 - Assinaturas e Recibos
 - 29-01-2025: Fase 1 (Banco de dados e RLS) completamente implementada

@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 05 banco dados
+# Data: 07-09-2025
+
 # 🗄️ Banco de Dados e Modelos - Backend ReciboFast
 
 **Autor:** David Assef  

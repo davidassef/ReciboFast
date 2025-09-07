@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 09 deploy infraestrutura
+# Data: 07-09-2025
+
 # 🚀 Deploy e Infraestrutura - Backend ReciboFast
 
 **Autor:** David Assef  

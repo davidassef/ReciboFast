@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 05 design system componentes
+# Data: 07-09-2025
+
 # 🎨 Design System e Componentes UI - Frontend ReciboFast
 
 **Autor:** David Assef  

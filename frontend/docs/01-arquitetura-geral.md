@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 01 arquitetura geral
+# Data: 07-09-2025
+
 # 🏗️ Arquitetura Geral - Frontend ReciboFast
 
 **Autor:** David Assef  

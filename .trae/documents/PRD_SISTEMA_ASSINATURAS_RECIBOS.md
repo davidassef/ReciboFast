@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Documento de Requisitos do Produto - Sistema de Assinaturas e Recibos ReciboFast
-# Data: 06-09-2025
+# Data: 07-09-2025
 
 # PRD - Sistema de Assinaturas e Recibos ReciboFast
 

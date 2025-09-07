@@ -33,6 +33,7 @@ export interface ReceiptFormData {
   signature_id?: string;
   include_signature: boolean;
   include_qr_code: boolean;
+  include_account_logo?: boolean;
 }
 
 export interface ReceiptPreview {

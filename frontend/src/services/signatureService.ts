@@ -1,5 +1,5 @@
 // Autor: David Assef
-// Data: 05-09-2025
+// Data: 06-09-2025
 // Descrição: Serviço para gerenciamento de assinaturas digitais
 // MIT License
 
@@ -78,16 +78,15 @@ export class SignatureService {
       throw new Error(`Erro no upload: ${uploadError.message}`);
     }
 
-    // Salvar metadados no banco
+    // Salvar metadados no banco (usar colunas existentes: owner_id, file_name, file_path, file_size, mime_type)
     const { data: signature, error: dbError } = await supabase
       .from('rf_signatures')
       .insert({
-        user_id: user.id,
-        name: baseName,
+        owner_id: user.id,
+        file_name: baseName,
         file_path: uploadData.path,
         file_size: file.size,
-        mime_type: file.type,
-        is_default: isDefault || false
+        mime_type: file.type
       })
       .select()
       .single();
@@ -108,25 +107,39 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data: signatures, error } = await supabase
+    // Buscar no schema atual rf_signatures
+    const { data: rfRows, error: rfErr } = await supabase
       .from('rf_signatures')
-      .select('id, name, file_path, is_default, created_at, file_size, mime_type')
+      .select('id, file_name, file_path, created_at')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false });
+    if (rfErr) throw new Error(`Erro ao buscar assinaturas: ${rfErr.message}`);
+
+    // Buscar no schema legado signatures (se existir)
+    const { data: legacyRows, error: legacyErr } = await supabase
+      .from('signatures')
+      .select('id, file_name, file_path, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+    // Ignora erro do legado se tabela não existir; só considera quando vier dados
 
-    if (error) {
-      throw new Error(`Erro ao buscar assinaturas: ${error.message}`);
-    }
+    // Mesclar por file_path para evitar duplicatas
+    const byPath = new Map<string, any>();
+    (rfRows || []).forEach((r: any) => byPath.set(r.file_path, { ...r }));
+    (legacyRows || []).forEach((r: any) => {
+      if (!byPath.has(r.file_path)) byPath.set(r.file_path, { ...r });
+    });
 
-    // Gerar URLs de thumbnail para cada assinatura
+    const merged = Array.from(byPath.values());
+
+    // Gerar URLs assinadas e mapear para SignatureGalleryItem
     const signatureItems: SignatureGalleryItem[] = await Promise.all(
-      signatures.map(async (signature) => {
-        // Gerar URL assinada (fallback para pública)
+      merged.map(async (signature: any) => {
         let publicUrl = '';
         try {
           const { data: signed } = await supabase.storage
             .from(this.BUCKET_NAME)
-            .createSignedUrl(signature.file_path, 60 * 60); // 1 hora
+            .createSignedUrl(signature.file_path, 60 * 60);
           publicUrl = signed?.signedUrl || '';
           if (!publicUrl) {
             const { data: urlData } = supabase.storage
@@ -141,20 +154,18 @@ export class SignatureService {
           publicUrl = urlData.publicUrl;
         }
 
-        // display_name: se nome antigo padronizado (signature_uuid_timestamp), mostrar algo mais legível
-        const legacyPattern = /^signature_[a-f0-9-]+_\d+$/i;
         const baseFromPath = signature.file_path.split('/').pop()?.replace(/\.[^/.]+$/, '');
-        const displayName = legacyPattern.test(signature.name) ? (baseFromPath || signature.name) : signature.name;
+        const displayName = signature.file_name || baseFromPath || 'Assinatura';
 
         return {
           id: signature.id,
-          name: signature.name,
+          name: displayName,
           display_name: displayName,
           thumbnail_url: publicUrl,
-          is_default: signature.is_default,
+          is_default: false,
           created_at: signature.created_at,
-          file_size: signature.file_size,
-          file_type: signature.mime_type
+          file_size: undefined,
+          file_type: undefined
         };
       })
     );
@@ -171,9 +182,9 @@ export class SignatureService {
 
     const { data: signature, error } = await supabase
       .from('rf_signatures')
-      .select('*')
+      .select('id, file_name, file_path, created_at')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('owner_id', user.id)
       .single();
 
     if (error) {
@@ -202,10 +213,58 @@ export class SignatureService {
 
     return {
       id: signature.id,
-      name: signature.name,
+      name: signature.file_name || signature.file_path.split('/').pop() || 'Assinatura',
       url,
-      is_default: signature.is_default,
-      file_size: signature.file_size,
+      is_default: false,
+      file_size: 0,
+      created_at: signature.created_at
+    };
+  }
+
+  /**
+   * Obtém uma assinatura pelo caminho do arquivo (file_path) do bucket
+   * Útil para resolver a assinatura padrão guardada no user_metadata
+   */
+  static async getSignatureByPath(file_path: string): Promise<SignaturePreview> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { data: signature, error } = await supabase
+      .from('rf_signatures')
+      .select('id, file_name, file_path, created_at')
+      .eq('owner_id', user.id)
+      .eq('file_path', file_path)
+      .single();
+
+    if (error) {
+      throw new Error(`Erro ao buscar assinatura por caminho: ${error.message}`);
+    }
+
+    let url = '';
+    try {
+      const { data: signed } = await supabase.storage
+        .from(this.BUCKET_NAME)
+        .createSignedUrl(signature.file_path, 60 * 60);
+      url = signed?.signedUrl || '';
+      if (!url) {
+        const { data: urlData } = supabase.storage
+          .from(this.BUCKET_NAME)
+          .getPublicUrl(signature.file_path);
+        url = urlData.publicUrl;
+      }
+    } catch {
+      const { data: urlData } = supabase.storage
+        .from(this.BUCKET_NAME)
+        .getPublicUrl(signature.file_path);
+      url = urlData.publicUrl;
+    }
+
+    return {
+      id: signature.id,
+      name: signature.file_name || signature.file_path.split('/').pop() || 'Assinatura',
+      url,
+      is_default: false,
+      file_size: 0,
       created_at: signature.created_at
     };
   }
@@ -216,20 +275,16 @@ export class SignatureService {
   static async setDefaultSignature(id: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
-
-    // Remover padrão de todas as assinaturas
-    await this.removeDefaultSignature(user.id);
-
-    // Definir nova assinatura padrão
-    const { error } = await supabase
+    // Define assinatura padrão atualizando user_metadata.default_signature_path
+    const { data: sig, error: fetchErr } = await supabase
       .from('rf_signatures')
-      .update({ is_default: true })
+      .select('file_path')
       .eq('id', id)
-      .eq('user_id', user.id);
-
-    if (error) {
-      throw new Error(`Erro ao definir assinatura padrão: ${error.message}`);
-    }
+      .eq('owner_id', user.id)
+      .single();
+    if (fetchErr || !sig) throw new Error('Assinatura não encontrada');
+    const { error } = await supabase.auth.updateUser({ data: { default_signature_path: sig.file_path } });
+    if (error) throw new Error(`Erro ao definir assinatura padrão: ${error.message}`);
   }
 
   /**
@@ -308,11 +363,8 @@ export class SignatureService {
    * Remove o status de padrão de todas as assinaturas do usuário
    */
   private static async removeDefaultSignature(userId: string): Promise<void> {
-    await supabase
-      .from('rf_signatures')
-      .update({ is_default: false })
-      .eq('user_id', userId)
-      .eq('is_default', true);
+    // Agora o padrão é armazenado no user_metadata. Limpa o campo.
+    await supabase.auth.updateUser({ data: { default_signature_path: null } });
   }
 
   /**
@@ -324,12 +376,38 @@ export class SignatureService {
 
     const { error } = await supabase
       .from('rf_signatures')
-      .update({ name })
+      .update({ file_name: name })
       .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('owner_id', user.id);
 
     if (error) {
       throw new Error(`Erro ao atualizar nome da assinatura: ${error.message}`);
     }
   }
 }
+
+// Adapter simples esperado por certos componentes (ex.: ReceiptForm)
+// Fornece listagem como array de Signature (tipagem de frontend)
+export const signatureService = {
+  async listSignatures(): Promise<import('../types/signatures').Signature[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+    const { data, error } = await supabase
+      .from('rf_signatures')
+      .select('id, file_name, file_path, file_size, mime_type, created_at')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`Erro ao carregar assinaturas: ${error.message}`);
+    return (data || []).map((s: any) => ({
+      id: s.id,
+      user_id: user.id,
+      name: s.file_name || (s.file_path?.split('/').pop() || 'Assinatura'),
+      file_path: s.file_path,
+      file_size: s.file_size || 0,
+      mime_type: s.mime_type || 'image/png',
+      is_default: false,
+      created_at: s.created_at,
+      updated_at: s.created_at
+    }));
+  }
+};

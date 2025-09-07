@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, PenTool } from 'lucide-react';
 import { SignatureMethodModal } from './SignatureMethodModal';
 import { SignatureCanvasModal } from './SignatureCanvasModal';
-import { SignatureUpload } from './SignatureUpload';
-import { Signature, SignatureCreationMethod } from '../types/signature';
+import { SignatureUpload } from './signatures/SignatureUpload';
+import type { Signature } from '../types/signature';
+import { Button } from './ui/Button';
 
 interface SignatureCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSignatureCreated: (signature: Signature) => void;
+  onSignatureCreated: (signature: any) => void;
   userId: string;
 }
 
@@ -21,7 +22,7 @@ export const SignatureCreationModal: React.FC<SignatureCreationModalProps> = ({
   userId
 }) => {
   const [currentStep, setCurrentStep] = useState<ModalStep>('method-selection');
-  const [selectedMethod, setSelectedMethod] = useState<SignatureCreationMethod | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'upload' | 'canvas' | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detectar dispositivo móvel
@@ -34,7 +35,7 @@ export const SignatureCreationModal: React.FC<SignatureCreationModalProps> = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleMethodSelect = (method: SignatureCreationMethod) => {
+  const handleMethodSelect = (method: 'upload' | 'canvas') => {
     setSelectedMethod(method);
     if (method === 'canvas') {
       setCurrentStep('canvas');
@@ -64,8 +65,8 @@ export const SignatureCreationModal: React.FC<SignatureCreationModalProps> = ({
       case 'method-selection':
         return (
           <SignatureMethodModal
-            isOpen={true}
-            onClose={handleClose}
+            open={true}
+            onOpenChange={(open) => { if (!open) handleClose(); }}
             onMethodSelect={handleMethodSelect}
           />
         );
@@ -73,8 +74,8 @@ export const SignatureCreationModal: React.FC<SignatureCreationModalProps> = ({
       case 'canvas':
         return (
           <SignatureCanvasModal
-            isOpen={true}
-            onClose={handleBackToMethodSelection}
+            open={true}
+            onOpenChange={(open) => { if (!open) handleBackToMethodSelection(); }}
             onSave={handleSignatureCreated}
             userId={userId}
           />
@@ -104,11 +105,13 @@ export const SignatureCreationModal: React.FC<SignatureCreationModalProps> = ({
                 </Button>
               </div>
             </div>
-            
+
             <SignatureUpload
-              userId={userId}
-              onUploadSuccess={handleSignatureCreated}
-              onCancel={handleBackToMethodSelection}
+              onUploadSuccess={(signature: any) => {
+                onSignatureCreated(signature);
+                handleClose();
+              }}
+              onUploadError={() => {}}
             />
           </div>
         );
@@ -218,35 +221,10 @@ export const SignatureCreationModal: React.FC<SignatureCreationModalProps> = ({
         ) : null}
       </div>
       
-      {/* Render modals outside the main modal */}
-       {currentStep === 'canvas' && (
-         <SignatureCanvasModal
-           open={true}
-           onOpenChange={(open) => !open && handleBackToMethodSelection()}
-           onSignatureCreated={handleSignatureCreated}
-           userId={userId}
-           title="Desenhar Assinatura"
-         />
-       )}
-       
-       {currentStep === 'upload' && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-           <div className={`bg-white rounded-lg shadow-xl overflow-hidden ${
-             isMobile 
-               ? 'w-full h-full max-w-none max-h-none' 
-               : 'w-full max-w-2xl max-h-[90vh] overflow-y-auto'
-           }`}>
-             <div className="p-6">
-               <SignatureUpload
-                 onUploadSuccess={handleSignatureCreated}
-                 onCancel={handleBackToMethodSelection}
-               />
-             </div>
-           </div>
-         </div>
-       )}
+      {/* Modais externos removidos para evitar duplicação e divergência de props */}
     </div>
   );
-};
+}
+;
 
 export default SignatureCreationModal;

@@ -24,3 +24,6 @@ export {
   type ReceitaPagamentos,
   type PagamentosStats
 } from './pagamentosService';
+
+// Serviço de recibos (API)
+export { receiptsApi } from './receiptsApi';

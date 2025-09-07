@@ -1,10 +1,10 @@
 // Autor: David Assef
 // Descrição: Página de gerenciamento de recibos
-// Data: 05-09-2025
+// Data: 06-09-2025
 // MIT License
 
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { SignatureService } from '../services/signatureService';
+import { receiptsApi } from '../services';
 
 interface Recibo {
   id: string;
@@ -32,59 +34,19 @@ interface Recibo {
   cliente: string;
   valor: number;
   dataEmissao: string;
-  dataVencimento: string;
   status: 'emitido' | 'enviado' | 'pago' | 'vencido' | 'suspenso' | 'revogado';
   descricao: string;
   formaPagamento?: string;
   useLogo?: boolean;
   logoDataUrl?: string; // Logo personalizada por recibo (base64/dataURL)
   cpf?: string; // CPF do cliente (opcional)
+  signatureId?: string; // ID da assinatura selecionada (persistência)
   signatureDataUrl?: string; // Assinatura anexada (base64/dataURL)
+  issuerName?: string; // Emitir em nome de
+  issuerDocumento?: string; // Documento do emissor alternativo
 }
 
-const mockRecibos: Recibo[] = [
-  {
-    id: '1',
-    numero: 'RB-001',
-    cliente: 'João Silva',
-    valor: 500.00,
-    dataEmissao: '2025-01-15',
-    dataVencimento: '2025-01-30',
-    status: 'pago',
-    descricao: 'Consultoria em TI - Janeiro 2025',
-    formaPagamento: 'PIX'
-  },
-  {
-    id: '2',
-    numero: 'RB-002',
-    cliente: 'Maria Santos',
-    valor: 750.00,
-    dataEmissao: '2025-01-18',
-    dataVencimento: '2025-02-02',
-    status: 'enviado',
-    descricao: 'Desenvolvimento de sistema - Fase 1'
-  },
-  {
-    id: '3',
-    numero: 'RB-003',
-    cliente: 'Pedro Costa',
-    valor: 300.00,
-    dataEmissao: '2025-01-10',
-    dataVencimento: '2025-01-25',
-    status: 'vencido',
-    descricao: 'Manutenção de software'
-  },
-  {
-    id: '4',
-    numero: 'RB-004',
-    cliente: 'Ana Oliveira',
-    valor: 1200.00,
-    dataEmissao: '2025-01-20',
-    dataVencimento: '2025-02-05',
-    status: 'emitido',
-    descricao: 'Consultoria estratégica'
-  }
-];
+// Lista será carregada do backend
 
 const getStatusColor = (status: Recibo['status']) => {
   switch (status) {
@@ -103,7 +65,10 @@ const getStatusColor = (status: Recibo['status']) => {
     default:
       return 'bg-gray-100 text-gray-800';
   }
-};
+  };
+
+  // Helper simples para detectar UUIDs
+  const isUUID = (v: string | undefined | null) => !!v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(v);
 
 const getStatusLabel = (status: Recibo['status']) => {
   switch (status) {
@@ -127,14 +92,13 @@ const getStatusLabel = (status: Recibo['status']) => {
 const Recibos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [recibos, setRecibos] = useState<Recibo[]>(mockRecibos);
+  const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [showNovoRecibo, setShowNovoRecibo] = useState(false);
   const [novoRecibo, setNovoRecibo] = useState<Partial<Recibo>>({
     numero: '',
     cliente: '',
     valor: 0,
     dataEmissao: '',
-    dataVencimento: '',
     status: 'emitido',
     descricao: '',
     formaPagamento: 'PIX'
@@ -145,13 +109,28 @@ const Recibos: React.FC = () => {
   const [editRecibo, setEditRecibo] = useState<Partial<Recibo>>({});
   const [defaultLogoUrl, setDefaultLogoUrl] = useState<string | null>(null);
   const [defaultSignatureUrl, setDefaultSignatureUrl] = useState<string | null>(null);
+  const [defaultSignaturePath, setDefaultSignaturePath] = useState<string | null>(null);
   // Opções armazenadas do usuário
   const [logoOptions, setLogoOptions] = useState<Array<{ path: string; url: string; name: string }>>([]);
-  const [signatureOptions, setSignatureOptions] = useState<Array<{ path: string; url: string; name: string }>>([]);
+  const [signatureOptions, setSignatureOptions] = useState<Array<{ id: string; url: string; name: string }>>([]);
   const [printWithLogo, setPrintWithLogo] = useState<boolean>(false);
   const [novoValorInput, setNovoValorInput] = useState<string>('');
   const [editValorInput, setEditValorInput] = useState<string>('');
   const location = useLocation() as any;
+  const navigate = useNavigate();
+  // Controle explícito de inclusão de assinatura (checkbox)
+  const [novoUseSignature, setNovoUseSignature] = useState<boolean>(false);
+  const [editUseSignature, setEditUseSignature] = useState<boolean>(false);
+  // Controle de "Emitir em nome de outra pessoa"
+  const [novoEmitirOutro, setNovoEmitirOutro] = useState<boolean>(false);
+  const [editEmitirOutro, setEditEmitirOutro] = useState<boolean>(false);
+
+  // Exclusão segura com confirmação de senha
+  const [showDeleteRecibo, setShowDeleteRecibo] = useState(false);
+  const [deleteTargetRecibo, setDeleteTargetRecibo] = useState<Recibo | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const filteredRecibos = recibos.filter(recibo => {
     const matchesSearch = recibo.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -163,7 +142,6 @@ const Recibos: React.FC = () => {
 
   const totalRecibos = filteredRecibos.reduce((sum, recibo) => sum + recibo.valor, 0);
   const recibosPagos = filteredRecibos.filter(r => r.status === 'pago').length;
-  const recibosVencidos = filteredRecibos.filter(r => r.status === 'vencido').length;
 
   // Helpers de moeda (pt-BR)
   const formatCurrencyDigitsToBR = (value: string): string => {
@@ -267,20 +245,62 @@ const Recibos: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const path = (user?.user_metadata as any)?.default_signature_path as string | undefined;
-        if (!path) { setDefaultSignatureUrl(null); return; }
+        if (!path) { setDefaultSignatureUrl(null); setDefaultSignaturePath(null); return; }
         const { data: signed } = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
         setDefaultSignatureUrl(signed?.signedUrl || null);
+        setDefaultSignaturePath(path);
       } catch (e) {
         console.warn('Não foi possível carregar a assinatura padrão:', e);
         setDefaultSignatureUrl(null);
+        setDefaultSignaturePath(null);
       }
     };
     loadDefaultSignature();
   }, []);
 
+  // Carregar recibos do backend na montagem
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data, error } = await receiptsApi.list(1, 50);
+        if (error || !data) {
+          setRecibos([]);
+          return;
+        }
+        const items = Array.isArray(data.items) ? data.items : [];
+        const mapped: Recibo[] = items.map((it: any) => {
+          const numeroStr = typeof it.numero === 'number' ? `RB-${String(it.numero).padStart(3,'0')}` : (it.numero || 'RB-—');
+          const dateStr: string = (it.emitido_em || it.created_at || '').slice(0,10);
+          return {
+            id: it.id,
+            numero: numeroStr,
+            cliente: '—',
+            valor: 0,
+            dataEmissao: dateStr,
+            status: 'emitido',
+            descricao: '',
+            formaPagamento: 'PIX',
+            useLogo: false,
+            logoDataUrl: undefined,
+            cpf: undefined,
+            signatureId: it.signature_id || undefined,
+            signatureDataUrl: undefined,
+            issuerName: it.issuer_name || undefined,
+            issuerDocumento: it.issuer_document || undefined,
+          } as Recibo;
+        });
+        setRecibos(mapped);
+      } catch (err) {
+        console.warn('Falha ao carregar recibos do backend:', err);
+        setRecibos([]);
+      }
+    };
+    load();
+  }, []);
+
   // Prefill de recibo ao navegar a partir de Contratos
   useEffect(() => {
-    const s = (location && location.state) as any;
+    const s = (location && (location as any).state) as any;
     if (s && s.prefillRecibo) {
       const p = s.prefillRecibo;
       setShowNovoRecibo(true);
@@ -294,45 +314,43 @@ const Recibos: React.FC = () => {
         descricao: p.descricao || prev.descricao,
         formaPagamento: p.formaPagamento || prev.formaPagamento,
         dataEmissao: p.dataEmissao || prev.dataEmissao,
-        dataVencimento: p.dataVencimento || prev.dataVencimento,
       }));
       if (p.valor) {
         const formatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         setNovoValorInput(formatter.format(p.valor));
       }
-      // limpa o state de navegação
       if (window.history?.replaceState) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
-  }, [location.state, defaultSignatureUrl, defaultLogoUrl]);
-  // Carrega a lista de arquivos de assinatura e logo do usuário ao abrir modais
+  }, [location, defaultSignatureUrl, defaultLogoUrl]);
+
+  // Inicializa checkboxes de inclusão de assinatura ao abrir modais
+  useEffect(() => {
+    if (showNovoRecibo) {
+      setNovoUseSignature(!!defaultSignatureUrl || !!novoRecibo.signatureDataUrl);
+    }
+  }, [showNovoRecibo, defaultSignatureUrl]);
+
+  useEffect(() => {
+    if (showEditRecibo) {
+      setEditUseSignature(!!defaultSignatureUrl || !!editRecibo.signatureDataUrl);
+    }
+  }, [showEditRecibo, defaultSignatureUrl, editRecibo.signatureDataUrl]);
+  // Carrega a lista de assinaturas (via serviço central, por nome) e logos do usuário ao abrir modais
   useEffect(() => {
     const loadAssets = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        // List signatures (diretório raiz do usuário e subpasta signatures)
-        const sigOptions: Array<{ path: string; url: string; name: string }> = [];
-        const rootPath = `${user.id}`;
-        const sigPath = `${user.id}/signatures`;
-        const { data: sigRootList } = await supabase.storage.from('signatures').list(rootPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
-        const { data: sigSubList } = await supabase.storage.from('signatures').list(sigPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
-        const addSigned = async (basePath: string, files: any[] | null | undefined) => {
-          if (!files) return;
-          for (const f of files) {
-            if (!f.name) continue;
-            const full = `${basePath}/${f.name}`;
-            const { data: s } = await supabase.storage.from('signatures').createSignedUrl(full, 60 * 60);
-            if (s?.signedUrl) sigOptions.push({ path: full, url: s.signedUrl, name: f.name });
-          }
-        };
-        await addSigned(rootPath, sigRootList);
-        await addSigned(sigPath, sigSubList);
+        // Assinaturas: usar serviço central para listar por nome (display_name) e URL assinada
+        const gallery = await SignatureService.getUserSignatures();
+        const sigOptions = gallery.map(item => ({ id: item.id, url: item.thumbnail_url, name: item.display_name || item.name }));
         setSignatureOptions(sigOptions);
 
         // List logos (diretório raiz e subpasta branding)
         const logoOpts: Array<{ path: string; url: string; name: string }> = [];
+        const rootPath = `${user.id}`;
         const brandPath = `${user.id}/branding`;
         const { data: brandRootList } = await supabase.storage.from('signatures').list(rootPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
         const { data: brandSubList } = await supabase.storage.from('signatures').list(brandPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
@@ -355,9 +373,11 @@ const Recibos: React.FC = () => {
     if (showEditRecibo || showNovoRecibo) loadAssets();
   }, [showEditRecibo, showNovoRecibo]);
 
+  
+
   // Uploads diretos e seletores de arquivo foram removidos deste módulo
 
-  const handleCreateRecibo = (e: React.FormEvent) => {
+  const handleCreateRecibo = async (e: React.FormEvent) => {
     e.preventDefault();
     const id = (window.crypto && 'randomUUID' in window.crypto) ? window.crypto.randomUUID() : String(Date.now());
     const numero = (novoRecibo.numero && novoRecibo.numero.trim()) || `RB-${String(recibos.length + 1).padStart(3, '0')}`;
@@ -365,27 +385,139 @@ const Recibos: React.FC = () => {
     const valor = parseCurrencyBRToNumber(novoValorInput);
     const hojeISO = new Date().toISOString().slice(0,10);
     const emissao = (novoRecibo.dataEmissao && novoRecibo.dataEmissao) || hojeISO;
-    const venc = (novoRecibo.dataVencimento && novoRecibo.dataVencimento) || hojeISO;
-    const novo: Recibo = {
+    // Resolver ID/URL da assinatura se checkbox ativo e não houver seleção explícita
+    let resolvedSignatureId: string | undefined = novoRecibo.signatureId;
+    let resolvedSignatureUrl: string | undefined = novoRecibo.signatureDataUrl;
+    if (novoUseSignature && !resolvedSignatureId && defaultSignaturePath) {
+      try {
+        const preview = await SignatureService.getSignatureByPath(defaultSignaturePath);
+        resolvedSignatureId = preview.id;
+        resolvedSignatureUrl = preview.url;
+      } catch (err) {
+        console.warn('Não foi possível resolver assinatura padrão por caminho:', err);
+      }
+    }
+    // Cria localmente para resposta rápida na UI
+    let novo: Recibo = {
       id,
       numero,
       cliente,
       valor,
       dataEmissao: emissao,
-      dataVencimento: venc,
       status: (novoRecibo.status as Recibo['status']) || 'emitido',
       descricao: novoRecibo.descricao || '',
-      formaPagamento: novoRecibo.formaPagamento,
-      useLogo: !!novoRecibo.useLogo,
+      formaPagamento: novoRecibo.formaPagamento || 'PIX',
+      useLogo: novoRecibo.useLogo,
       logoDataUrl: novoRecibo.logoDataUrl,
-      cpf: novoRecibo.cpf || undefined,
-      signatureDataUrl: novoRecibo.signatureDataUrl || undefined
+      cpf: (novoRecibo.cpf && novoRecibo.cpf.trim()) ? novoRecibo.cpf : undefined,
+      signatureId: novoUseSignature ? resolvedSignatureId : undefined,
+      signatureDataUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
+      issuerName: novoEmitirOutro ? ((novoRecibo.issuerName || '').trim() || undefined) : undefined,
+      issuerDocumento: novoEmitirOutro ? ((novoRecibo.issuerDocumento || '').trim() || undefined) : undefined,
     };
+
+    // Persistência no backend (assíncrona, com fallback silencioso)
+    try {
+      const payload = {
+        income_id: null,
+        pdf_url: null,
+        hash: null,
+        signature_id: novo.signatureId ?? null,
+        issuer_name: novo.issuerName ?? null,
+        issuer_document: novo.issuerDocumento ?? null,
+      };
+      const { data, error } = await receiptsApi.create(payload);
+      if (!error && data) {
+        // Atualiza ID e número pela fonte de verdade do backend
+        const backendNumero = typeof data.numero === 'number' ? `RB-${String(data.numero).padStart(3, '0')}` : novo.numero;
+        novo = { ...novo, id: data.id, numero: backendNumero };
+      }
+    } catch (err) {
+      console.warn('Falha ao persistir recibo no backend. Mantendo item local.', err);
+    }
+
     setRecibos(prev => [novo, ...prev]);
     setShowNovoRecibo(false);
-    setNovoRecibo({ numero: '', cliente: '', valor: 0, dataEmissao: '', dataVencimento: '', status: 'emitido', descricao: '', formaPagamento: 'PIX' });
+    setNovoRecibo({ numero: '', cliente: '', valor: 0, dataEmissao: '', status: 'emitido', descricao: '', formaPagamento: 'PIX' });
     setNovoValorInput('');
+    setNovoEmitirOutro(false);
   };
+
+  const generatePrintableHtml = (recibo: Recibo) => {
+const logoUrl = recibo.useLogo ? (recibo.logoDataUrl || defaultLogoUrl) : null;
+const style = `
+<style>
+:root { --fg:#0f172a; --muted:#64748b; --border:#cbd5e1; --bg:#ffffff; --panel:#f8fafc; }
+*{box-sizing:border-box}
+body{font-family: Georgia, 'Times New Roman', serif; margin:16px; background:var(--bg); color:var(--fg)}
+.wrap{max-width:800px;margin:0 auto;border:1px solid var(--border);}
+.head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:2px solid var(--border);}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{height:48px;object-fit:contain}
+h1{font-size:22px;letter-spacing:.5px;margin:0}
+.content{padding:16px;background:var(--panel)}
+.row{display:flex;justify-content:space-between;gap:12px}
+.muted{color:var(--muted)}
+.signature{margin-top:32px;text-align:center}
+.signature img{max-height:80px;object-fit:contain;margin-bottom:8px}
+.signature .line{border-top:1px solid var(--border);margin-top:24px}
+.center{text-align:center}
+</style>
+`;
+const dataBR = recibo.dataEmissao ? new Date(recibo.dataEmissao).toLocaleDateString('pt-BR') : '';
+return `
+<html>
+<head><meta charset="utf-8">${style}<title>Recibo ${recibo.numero}</title></head>
+<body>
+<div class="wrap">
+<div class="head">
+<div class="brand">
+${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo"/>` : ''}
+<h1>Recibo</h1>
+</div>
+<div class="muted">${recibo.numero}</div>
+</div>
+<div class="content">
+<div class="row"><div class="muted">Cliente</div><div>${recibo.cliente}</div></div>
+<div class="row"><div class="muted">Valor</div><div>R$ ${recibo.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div>
+<div class="row"><div class="muted">Emissão</div><div>${dataBR || '—'}</div></div>
+${(recibo.issuerName || recibo.issuerDocumento) ? `<div class="row"><div class="muted">Emitido por</div><div>${recibo.issuerName || ''}${recibo.issuerDocumento ? ' • ' + recibo.issuerDocumento : ''}</div></div>` : ''}
+${recibo.descricao ? `<div style="margin-top:12px"><div class="muted">Descrição</div><div>${recibo.descricao}</div></div>` : ''}
+<div class="muted" style="margin-top:16px">E para maior clareza, afirmo o presente.</div>
+${dataBR ? `<div class="center" style="margin-top:28px">${dataBR}</div>` : ''}
+<div class="signature">
+${recibo.signatureDataUrl ? `<img src="${recibo.signatureDataUrl}" alt="Assinatura" />` : ''}
+<div class="line"></div>
+<div class="muted" style="margin-top:8px">Assinatura</div>
+</div>
+</div>
+</div>
+<script>window.onload = () => { window.print(); };</script>
+</body>
+</html>`;
+  };
+
+  const handleDownloadRecibo = async (recibo: Recibo) => {
+let toPrint = { ...recibo } as Recibo;
+// Se temos ID mas não URL, resolve antes de imprimir
+if (toPrint.signatureId && !toPrint.signatureDataUrl) {
+try {
+const preview = await SignatureService.getSignatureById(toPrint.signatureId);
+toPrint.signatureDataUrl = preview.url;
+} catch (err) {
+console.warn('Não foi possível resolver URL da assinatura por ID:', err);
+}
+}
+const win = window.open('', '_blank');
+if (!win) return;
+win.document.open();
+win.document.write(generatePrintableHtml(toPrint));
+win.document.close();
+};
+
+  const handleShareRecibo = async (recibo: Recibo) => {
+// ...
+};
 
   const handleViewRecibo = (recibo: Recibo) => {
     setReciboSelecionado(recibo);
@@ -393,136 +525,102 @@ const Recibos: React.FC = () => {
     setPrintWithLogo(!!recibo.useLogo || !!defaultLogoUrl);
   };
 
-  const generatePrintableHtml = (recibo: Recibo) => {
-    const logoUrl = recibo.useLogo ? (recibo.logoDataUrl || defaultLogoUrl) : null;
-    const style = `
-      <style>
-        :root { --fg:#0f172a; --muted:#64748b; --border:#cbd5e1; --bg:#ffffff; --panel:#f8fafc; }
-        *{box-sizing:border-box}
-        body{font-family: Georgia, 'Times New Roman', serif; margin:16px; background:var(--bg); color:var(--fg)}
-        .wrap{max-width:800px;margin:0 auto;border:1px solid var(--border);}
-        .head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:2px solid var(--border);}
-        .title{font-size:32px;font-weight:800;letter-spacing:.5px}
-        .head-right{font-weight:700;text-align:right;}
-        .head-right div{line-height:1.2}
-        .panel{padding:16px;background:#fff}
-        .text{line-height:1.7;text-align:justify}
-        .strong{font-weight:700}
-        .muted{color:var(--muted)}
-        .center{ text-align:center }
-        .signature{ margin-top:40px; display:flex; flex-direction:column; align-items:center }
-        .signature img{ max-height:80px; object-fit:contain; margin-bottom:8px }
-        .line{ width:60%; border-top:1px solid var(--border); margin-top:28px }
-        .logo{ max-height:42px; object-fit:contain; margin-right:12px }
-        @media print{ body{margin:0} }
-      </style>
-    `;
-    const numero = recibo.numero || '';
-    const valorBR = `R$ ${recibo.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    const valorExtenso = numeroPorExtensoBRL(recibo.valor).toUpperCase();
-    const cliente = (recibo.cliente || '').trim();
-    const cpf = (recibo.cpf || '').trim();
-    const descricao = (recibo.descricao || '').trim();
-    const dataEmissao = recibo.dataEmissao ? new Date(recibo.dataEmissao) : null;
-    const dataBR = dataEmissao ? dataEmissao.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
-
-    const linhaIdent = cliente ? `Eu, <span class="strong">${cliente}</span>${cpf ? `, CPF nº <span class="strong">${cpf}</span>` : ''}, declaro ter recebido nesta data a quantia de: <span class="strong">${valorBR}</span> (<span class="strong">${valorExtenso}</span>).` : '';
-    const linhaRef = descricao ? `Referente a: <span class="strong">${descricao}</span>.` : '';
-
-    return `
-      <html>
-        <head><meta charset="utf-8">${style}<title>Recibo ${numero}</title></head>
-        <body>
-          <div class="wrap">
-            <div class="head">
-              <div style="display:flex; align-items:center">
-                ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo" />` : ''}
-                <div class="title">RECIBO</div>
-              </div>
-              <div class="head-right">
-                ${numero ? `<div>Nº: ${numero}</div>` : ''}
-                <div>VALOR: ${valorBR}</div>
-              </div>
-            </div>
-            <div class="panel">
-              <div class="text">
-                ${linhaIdent}
-                ${linhaRef ? `<br/><br/>${linhaRef}` : ''}
-              </div>
-              <div class="muted" style="margin-top:16px">E para maior clareza, afirmo o presente.</div>
-              ${dataBR ? `<div class="center" style="margin-top:28px">${dataBR}</div>` : ''}
-              <div class="signature">
-                ${recibo.signatureDataUrl ? `<img src="${recibo.signatureDataUrl}" alt="Assinatura" />` : ''}
-                <div class="line"></div>
-                <div class="muted" style="margin-top:8px">Assinatura</div>
-              </div>
-            </div>
-          </div>
-          <script>window.onload = () => { window.print(); };</script>
-        </body>
-      </html>`;
-  };
-
-  const handleDownloadRecibo = (recibo: Recibo) => {
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.open();
-    win.document.write(generatePrintableHtml(recibo));
-    win.document.close();
-  };
-
-  const handleShareRecibo = async (recibo: Recibo) => {
-    const text = `Recibo ${recibo.numero}\nCliente: ${recibo.cliente}\nValor: R$ ${recibo.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nStatus: ${getStatusLabel(recibo.status)}\nEmissão: ${new Date(recibo.dataEmissao).toLocaleDateString('pt-BR')}\nVencimento: ${new Date(recibo.dataVencimento).toLocaleDateString('pt-BR')}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `Recibo ${recibo.numero}`, text });
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        alert('Resumo do recibo copiado para a área de transferência.');
-      } else {
-        alert(text);
-      }
-    } catch (e) {
-      console.warn('Falha ao compartilhar:', e);
-    }
-  };
-
   const handleEditReciboOpen = (recibo: Recibo) => {
-    setReciboSelecionado(recibo);
-    setEditRecibo({ ...recibo });
-    setEditValorInput(formatNumberToCurrencyBR(recibo.valor));
-    setShowEditRecibo(true);
+setReciboSelecionado(recibo);
+setEditRecibo({ ...recibo });
+setEditValorInput(formatNumberToCurrencyBR(recibo.valor));
+setShowEditRecibo(true);
+};
+
+  const handleEditReciboSubmit = async (e: React.FormEvent) => {
+e.preventDefault();
+if (!reciboSelecionado) return;
+const novoValor = parseCurrencyBRToNumber(editValorInput);
+// Resolver assinatura padrão se checkbox ativo e sem seleção explícita
+let resolvedSignatureId: string | undefined = editRecibo.signatureId ?? reciboSelecionado.signatureId;
+let resolvedSignatureUrl: string | undefined = editRecibo.signatureDataUrl ?? reciboSelecionado.signatureDataUrl;
+if (editUseSignature && !resolvedSignatureId && defaultSignaturePath) {
+try {
+const preview = await SignatureService.getSignatureByPath(defaultSignaturePath);
+resolvedSignatureId = preview.id;
+resolvedSignatureUrl = preview.url;
+} catch (err) {
+console.warn('Não foi possível resolver assinatura padrão por caminho (edição):', err);
+}
+}
+setRecibos(prev => prev.map(r => r.id === reciboSelecionado.id ? {
+...r,
+numero: (editRecibo.numero || r.numero)!,
+cliente: (editRecibo.cliente || r.cliente)!,
+valor: isNaN(novoValor) ? r.valor : novoValor,
+dataEmissao: (editRecibo.dataEmissao || r.dataEmissao)!,
+status: (editRecibo.status as Recibo['status']) || r.status,
+descricao: editRecibo.descricao ?? r.descricao,
+formaPagamento: editRecibo.formaPagamento ?? r.formaPagamento,
+useLogo: typeof editRecibo.useLogo === 'boolean' ? editRecibo.useLogo : r.useLogo,
+logoDataUrl: editRecibo.logoDataUrl ?? r.logoDataUrl,
+cpf: typeof editRecibo.cpf === 'string' ? editRecibo.cpf : r.cpf,
+signatureId: editUseSignature ? (resolvedSignatureId ?? undefined) : undefined,
+signatureDataUrl: editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined,
+issuerName: (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) ? (editRecibo.issuerName || r.issuerName) : undefined,
+issuerDocumento: (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) ? (editRecibo.issuerDocumento || r.issuerDocumento) : undefined,
+} : r));
+setShowEditRecibo(false);
+setReciboSelecionado(null);
+setEditRecibo({});
+setEditValorInput('');
+};
+
+  const openDeleteRecibo = (recibo: Recibo) => {
+    setDeleteTargetRecibo(recibo);
+    setDeletePassword('');
+    setDeleteError(null);
+    setShowDeleteRecibo(true);
   };
 
-  const handleEditReciboSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reciboSelecionado) return;
-    const novoValor = parseCurrencyBRToNumber(editValorInput);
-    setRecibos(prev => prev.map(r => r.id === reciboSelecionado.id ? {
-      ...r,
-      numero: (editRecibo.numero || r.numero)!,
-      cliente: (editRecibo.cliente || r.cliente)!,
-      valor: isNaN(novoValor) ? r.valor : novoValor,
-      dataEmissao: (editRecibo.dataEmissao || r.dataEmissao)!,
-      dataVencimento: (editRecibo.dataVencimento || r.dataVencimento)!,
-      status: (editRecibo.status as Recibo['status']) || r.status,
-      descricao: editRecibo.descricao ?? r.descricao,
-      formaPagamento: editRecibo.formaPagamento ?? r.formaPagamento,
-      useLogo: typeof editRecibo.useLogo === 'boolean' ? editRecibo.useLogo : r.useLogo,
-      logoDataUrl: editRecibo.logoDataUrl ?? r.logoDataUrl,
-      cpf: typeof editRecibo.cpf === 'string' ? editRecibo.cpf : r.cpf,
-      signatureDataUrl: editRecibo.signatureDataUrl ?? r.signatureDataUrl,
-    } : r));
-    setShowEditRecibo(false);
-    setReciboSelecionado(null);
-    setEditRecibo({});
-    setEditValorInput('');
-  };
-
-  const handleDeleteRecibo = (recibo: Recibo) => {
-    if (window.confirm(`Excluir o recibo ${recibo.numero}?`)) {
-      setRecibos(prev => prev.filter(r => r.id !== recibo.id));
+  const confirmDeleteRecibo = async () => {
+    if (!deleteTargetRecibo) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      // Confirmação de senha (reauth) - irreversível
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = (user?.email || '').trim();
+      if (!email) {
+        setDeleteError('Sessão inválida. Faça login novamente.');
+        setDeleteLoading(false);
+        return;
+      }
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: deletePassword });
+      if (authErr) {
+        setDeleteError('Senha incorreta. Tente novamente.');
+        setDeleteLoading(false);
+        return;
+      }
+      // Backend
+      try {
+        if (isUUID(deleteTargetRecibo.id)) {
+          await receiptsApi.remove(deleteTargetRecibo.id);
+        }
+      } catch (apiErr) {
+        console.warn('Falha ao excluir recibo no backend. Removendo localmente.', apiErr);
+      }
+      setRecibos(prev => prev.filter(r => r.id !== deleteTargetRecibo.id));
+      setShowDeleteRecibo(false);
+      setDeleteTargetRecibo(null);
+      setDeletePassword('');
+    } catch (err) {
+      setDeleteError('Erro inesperado ao confirmar exclusão.');
+    } finally {
+      setDeleteLoading(false);
     }
+  };
+
+  const cancelDeleteRecibo = () => {
+    setShowDeleteRecibo(false);
+    setDeleteTargetRecibo(null);
+    setDeletePassword('');
+    setDeleteError(null);
   };
 
   return (
@@ -544,7 +642,7 @@ const Recibos: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 rounded-full">
@@ -573,19 +671,7 @@ const Recibos: React.FC = () => {
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-red-100 rounded-full">
-              <Calendar className="w-6 h-6 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Vencidos</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {recibosVencidos}
-              </p>
-            </div>
-          </div>
-        </div>
+        
         
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center">
@@ -642,6 +728,54 @@ const Recibos: React.FC = () => {
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              {/* Emitir em nome de outra pessoa */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={novoEmitirOutro}
+                    onChange={(e) => setNovoEmitirOutro(e.target.checked)}
+                  />
+                  Emitir em nome de outra pessoa
+                </label>
+                {novoEmitirOutro && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input
+                        type="text"
+                        value={novoRecibo.issuerName || ''}
+                        onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Documento do emissor</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        value={novoRecibo.issuerDocumento || ''}
+                        onChange={(e) => {
+                          const digits = onlyDigits(e.target.value);
+                          const formatted = digits.length > 11
+                            ? digits
+                                .slice(0, 14)
+                                .replace(/(\d{2})(\d)/, '$1.$2')
+                                .replace(/(\d{3})(\d)/, '$1.$2')
+                                .replace(/(\d{3})(\d)/, '$1/$2')
+                                .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+                            : formatCPF(digits);
+                          setNovoRecibo(prev => ({ ...prev, issuerDocumento: formatted }));
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
                 <input
@@ -653,14 +787,10 @@ const Recibos: React.FC = () => {
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Emissão</label>
                   <input type="date" value={novoRecibo.dataEmissao || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, dataEmissao: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
-                  <input type="date" value={novoRecibo.dataVencimento || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, dataVencimento: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -689,24 +819,40 @@ const Recibos: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
                 <div className="flex items-center gap-3">
                   <input id="novo-use-logo" type="checkbox" checked={!!novoRecibo.useLogo} onChange={(e) => setNovoRecibo(prev => ({ ...prev, useLogo: e.target.checked }))} className="h-4 w-4" />
-                  <label htmlFor="novo-use-logo" className="text-sm text-gray-700">Exibir logo da sua conta</label>
+                  <label htmlFor="novo-use-logo" className="text-sm text-gray-700">Exibir sua logo</label>
                 </div>
                 <div className="mt-2 flex items-center gap-3">
-                  <select
-                    value={novoRecibo.logoDataUrl || ''}
-                    onChange={(e) => setNovoRecibo(prev => ({ ...prev, logoDataUrl: e.target.value || undefined }))}
-                    className="px-3 py-2 border rounded-lg text-sm"
-                    disabled={!novoRecibo.useLogo}
-                  >
-                    <option value="">Padrão da conta</option>
-                    {logoOptions.map(opt => (
-                      <option key={opt.path} value={opt.url}>{opt.name}</option>
-                    ))}
-                  </select>
-                  {(novoRecibo.logoDataUrl || defaultLogoUrl) ? (
-                    <img src={(novoRecibo.logoDataUrl || defaultLogoUrl) as string} alt="Logo padrão" className="h-10 object-contain border rounded bg-white px-2" />
+                  {logoOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={novoRecibo.logoDataUrl || ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__create_logo__') { navigate('/assinaturas'); return; }
+                          setNovoRecibo(prev => ({ ...prev, logoDataUrl: v || undefined }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                        disabled={!novoRecibo.useLogo}
+                      >
+                        <option value="">Selecione</option>
+                        {logoOptions.map(opt => (
+                          <option key={opt.path} value={opt.url}>{opt.name}</option>
+                        ))}
+                        <option value="__create_logo__">Cadastrar Nova Logo</option>
+                      </select>
+                      {(novoRecibo.logoDataUrl || defaultLogoUrl) && (
+                        <img src={(novoRecibo.logoDataUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
                   ) : (
-                    <span className="text-xs text-gray-500">Nenhuma logo cadastrada. Cadastre em Perfil.</span>
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                      disabled={!novoRecibo.useLogo}
+                    >
+                      <option value="__create_logo__">Cadastrar Nova Logo</option>
+                    </select>
                   )}
                 </div>
               </div>
@@ -716,27 +862,45 @@ const Recibos: React.FC = () => {
               </div>
               {/* Assinatura (selecionar da conta) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Assinatura</label>
+                </div>
                 <div className="mt-1 flex items-center gap-3">
-                  <input id="novo-use-signature" type="checkbox" checked={!!novoRecibo.signatureDataUrl || !!defaultSignatureUrl} onChange={(e) => setNovoRecibo(prev => ({ ...prev, signatureDataUrl: e.target.checked ? (defaultSignatureUrl || undefined) : undefined }))} className="h-4 w-4" />
-                  <label htmlFor="novo-use-signature" className="text-sm text-gray-700">Incluir assinatura</label>
-                  <select
-                    value={novoRecibo.signatureDataUrl || ''}
-                    onChange={(e) => setNovoRecibo(prev => ({ ...prev, signatureDataUrl: e.target.value || undefined }))}
-                    className="px-3 py-2 border rounded-lg text-sm"
-                    disabled={signatureOptions.length === 0}
-                  >
-                    <option value="">Padrão da conta</option>
-                    {signatureOptions.map(opt => (
-                      <option key={opt.path} value={opt.url}>{opt.name}</option>
-                    ))}
-                  </select>
-                  {novoRecibo.signatureDataUrl ? (
-                    <img src={novoRecibo.signatureDataUrl as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
-                  ) : defaultSignatureUrl ? (
-                    <img src={defaultSignatureUrl} alt="Assinatura padrão" className="h-10 object-contain border rounded bg-white px-2" />
+                  <input id="novo-use-signature" type="checkbox" checked={novoUseSignature} onChange={(e) => { setNovoUseSignature(e.target.checked); if (!e.target.checked) setNovoRecibo(prev => ({ ...prev, signatureDataUrl: undefined })); }} className="h-4 w-4" />
+                  <label htmlFor="novo-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
+                  {signatureOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={novoRecibo.signatureId || ''}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          if (id === '__create_sig__') { navigate('/assinaturas'); return; }
+                          const opt = signatureOptions.find(o => o.id === id);
+                          setNovoRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                        disabled={!novoUseSignature}
+                      >
+                        <option value="">Selecione</option>
+                        {signatureOptions.map(opt => (
+                          <option key={opt.id} value={opt.id}>{opt.name}</option>
+                        ))}
+                        <option value="__create_sig__">Cadastrar Nova Assinatura</option>
+                      </select>
+                      {novoUseSignature && (novoRecibo.signatureDataUrl || defaultSignatureUrl) && (
+                        <img src={(novoRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
                   ) : (
-                    <span className="text-xs text-gray-500">Nenhuma assinatura cadastrada. Cadastre em Perfil.</span>
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                      disabled={!novoUseSignature}
+                    >
+                      <option value="">Selecione</option>
+                      <option value="__create_sig__">Cadastrar Nova Assinatura</option>
+                    </select>
                   )}
                 </div>
               </div>
@@ -764,7 +928,6 @@ const Recibos: React.FC = () => {
               <div className="flex justify-between"><span className="text-gray-500">Cliente</span><span className="font-medium">{reciboSelecionado.cliente}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Valor</span><span className="font-medium">R$ {reciboSelecionado.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Emissão</span><span>{new Date(reciboSelecionado.dataEmissao).toLocaleDateString('pt-BR')}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Vencimento</span><span>{new Date(reciboSelecionado.dataVencimento).toLocaleDateString('pt-BR')}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Status</span><span className={cn('inline-flex px-2 py-1 text-xs font-semibold rounded-full', getStatusColor(reciboSelecionado.status))}>{getStatusLabel(reciboSelecionado.status)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">CPF</span><span>{reciboSelecionado.cpf && reciboSelecionado.cpf.trim() ? reciboSelecionado.cpf : 'Não informado'}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Forma</span><span>{reciboSelecionado.formaPagamento && reciboSelecionado.formaPagamento.trim() ? reciboSelecionado.formaPagamento : 'Não informado'}</span></div>
@@ -824,6 +987,54 @@ const Recibos: React.FC = () => {
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              {/* Emitir em nome de outra pessoa (edição) */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editEmitirOutro || !!editRecibo.issuerName || !!editRecibo.issuerDocumento}
+                    onChange={(e) => setEditEmitirOutro(e.target.checked)}
+                  />
+                  Emitir em nome de outra pessoa
+                </label>
+                {(editEmitirOutro || !!editRecibo.issuerName || !!editRecibo.issuerDocumento) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input
+                        type="text"
+                        value={editRecibo.issuerName || ''}
+                        onChange={(e) => setEditRecibo(prev => ({ ...prev, issuerName: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Documento do emissor</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        value={editRecibo.issuerDocumento || ''}
+                        onChange={(e) => {
+                          const digits = onlyDigits(e.target.value);
+                          const formatted = digits.length > 11
+                            ? digits
+                                .slice(0, 14)
+                                .replace(/(\d{2})(\d)/, '$1.$2')
+                                .replace(/(\d{3})(\d)/, '$1.$2')
+                                .replace(/(\d{3})(\d)/, '$1/$2')
+                                .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+                            : formatCPF(digits);
+                          setEditRecibo(prev => ({ ...prev, issuerDocumento: formatted }));
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
                 <input
@@ -835,14 +1046,10 @@ const Recibos: React.FC = () => {
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Emissão</label>
                   <input type="date" value={editRecibo.dataEmissao || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, dataEmissao: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
-                  <input type="date" value={editRecibo.dataVencimento || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, dataVencimento: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -874,21 +1081,37 @@ const Recibos: React.FC = () => {
                   <label htmlFor="edit-use-logo" className="text-sm text-gray-700">Exibir logo da sua conta</label>
                 </div>
                 <div className="mt-2 flex items-center gap-3">
-                  <select
-                    value={editRecibo.logoDataUrl || ''}
-                    onChange={(e) => setEditRecibo(prev => ({ ...prev, logoDataUrl: e.target.value || undefined }))}
-                    className="px-3 py-2 border rounded-lg text-sm"
-                    disabled={!editRecibo.useLogo}
-                  >
-                    <option value="">Padrão da conta</option>
-                    {logoOptions.map(opt => (
-                      <option key={opt.path} value={opt.url}>{opt.name}</option>
-                    ))}
-                  </select>
-                  {(editRecibo.logoDataUrl || defaultLogoUrl) ? (
-                    <img src={(editRecibo.logoDataUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                  {logoOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={editRecibo.logoDataUrl || ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__create_logo__') { navigate('/assinaturas'); return; }
+                          setEditRecibo(prev => ({ ...prev, logoDataUrl: v || undefined }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                        disabled={!editRecibo.useLogo}
+                      >
+                        <option value="">Selecione</option>
+                        {logoOptions.map(opt => (
+                          <option key={opt.path} value={opt.url}>{opt.name}</option>
+                        ))}
+                        <option value="__create_logo__">Cadastrar Nova Logo</option>
+                      </select>
+                      {(editRecibo.logoDataUrl || defaultLogoUrl) && (
+                        <img src={(editRecibo.logoDataUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
                   ) : (
-                    <span className="text-xs text-gray-500">Nenhuma logo cadastrada. Cadastre em Perfil.</span>
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm"
+                      disabled={!editRecibo.useLogo}
+                    >
+                      <option value="__create_logo__">Cadastrar Nova Logo</option>
+                    </select>
                   )}
                 </div>
               </div>
@@ -896,26 +1119,51 @@ const Recibos: React.FC = () => {
               {/* Assinatura na edição (selecionar da conta) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
-                <div className="mt-1 flex items-center gap-3">
-                  <input id="edit-use-signature" type="checkbox" checked={!!editRecibo.signatureDataUrl || !!defaultSignatureUrl} onChange={(e) => setEditRecibo(prev => ({ ...prev, signatureDataUrl: e.target.checked ? (defaultSignatureUrl || undefined) : undefined }))} className="h-4 w-4" />
-                  <label htmlFor="edit-use-signature" className="text-sm text-gray-700">Incluir assinatura</label>
-                  <select
-                    value={editRecibo.signatureDataUrl || ''}
-                    onChange={(e) => setEditRecibo(prev => ({ ...prev, signatureDataUrl: e.target.value || undefined }))}
-                    className="px-3 py-2 border rounded-lg text-sm"
-                    disabled={signatureOptions.length === 0}
-                  >
-                    <option value="">Padrão da conta</option>
-                    {signatureOptions.map(opt => (
-                      <option key={opt.path} value={opt.url}>{opt.name}</option>
-                    ))}
-                  </select>
-                  {editRecibo.signatureDataUrl ? (
-                    <img src={editRecibo.signatureDataUrl as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
-                  ) : defaultSignatureUrl ? (
-                    <img src={defaultSignatureUrl} alt="Assinatura padrão" className="h-10 object-contain border rounded bg-white px-2" />
+                  <div className="mt-1 flex items-center gap-3">
+                  <input
+                    id="edit-use-signature"
+                    type="checkbox"
+                    checked={editUseSignature}
+                    onChange={(e) => {
+                      setEditUseSignature(e.target.checked);
+                      if (!e.target.checked) setEditRecibo(prev => ({ ...prev, signatureDataUrl: undefined }));
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="edit-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
+                  {signatureOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={editRecibo.signatureId || ''}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          if (id === '__create_sig__') { navigate('/assinaturas'); return; }
+                          const opt = signatureOptions.find(o => o.id === id);
+                          setEditRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                        disabled={!editUseSignature}
+                      >
+                        <option value="">Selecione</option>
+                        {signatureOptions.map(opt => (
+                          <option key={opt.id} value={opt.id}>{opt.name}</option>
+                        ))}
+                        <option value="__create_sig__">Cadastrar Nova Assinatura</option>
+                      </select>
+                      {editUseSignature && (editRecibo.signatureDataUrl || defaultSignatureUrl) && (
+                        <img src={(editRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
                   ) : (
-                    <span className="text-xs text-gray-500">Nenhuma assinatura cadastrada. Cadastre em Perfil.</span>
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm"
+                      disabled={!editUseSignature}
+                    >
+                      <option value="">Selecione</option>
+                      <option value="__create_sig__">Cadastrar Nova Assinatura</option>
+                    </select>
                   )}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">A assinatura será exibida na impressão do recibo acima da linha de assinatura.</p>
@@ -997,7 +1245,6 @@ const Recibos: React.FC = () => {
               </summary>
               <div className="px-4 pt-2 pb-4 border-t text-sm text-gray-700 space-y-2">
                 <div className="flex justify-between gap-3"><span className="text-gray-500">Emissão</span><span>{new Date(recibo.dataEmissao).toLocaleDateString('pt-BR')}</span></div>
-                <div className="flex justify-between gap-3"><span className="text-gray-500">Vencimento</span><span>{new Date(recibo.dataVencimento).toLocaleDateString('pt-BR')}</span></div>
                 {recibo.formaPagamento && (
                   <div className="flex justify-between gap-3"><span className="text-gray-500">Forma</span><span>{recibo.formaPagamento}</span></div>
                 )}
@@ -1034,7 +1281,7 @@ const Recibos: React.FC = () => {
                   <button onClick={() => handleEditReciboOpen(recibo)} className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50" title="Editar">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDeleteRecibo(recibo)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Excluir">
+                  <button onClick={() => openDeleteRecibo(recibo)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Excluir">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -1061,9 +1308,6 @@ const Recibos: React.FC = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Emissão
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vencimento
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -1104,9 +1348,7 @@ const Recibos: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(recibo.dataEmissao).toLocaleDateString('pt-BR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(recibo.dataVencimento).toLocaleDateString('pt-BR')}
-                  </td>
+                  
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={cn(
                       'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
@@ -1146,7 +1388,7 @@ const Recibos: React.FC = () => {
                       <button onClick={() => handleEditReciboOpen(recibo)} className="text-gray-600 hover:text-gray-900" title="Editar">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDeleteRecibo(recibo)} className="text-red-600 hover:text-red-900" title="Excluir">
+                      <button onClick={() => openDeleteRecibo(recibo)} className="text-red-600 hover:text-red-900" title="Excluir">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -1158,8 +1400,37 @@ const Recibos: React.FC = () => {
         </div>
       </div>
 
+      {showDeleteRecibo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={cancelDeleteRecibo} />
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteRecibo} aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmar exclusão</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Esta ação é irreversível. Para excluir o recibo <strong>{deleteTargetRecibo?.numero}</strong>, confirme sua senha.
+            </p>
+            <input
+              type="password"
+              placeholder="Sua senha"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+            />
+            {deleteError && <div className="text-sm text-red-600 mb-2">{deleteError}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={cancelDeleteRecibo} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" disabled={deleteLoading}>Cancelar</button>
+              <button onClick={confirmDeleteRecibo} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50" disabled={deleteLoading || !deletePassword}>
+                {deleteLoading ? 'Excluindo...' : 'Excluir definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {filteredRecibos.length === 0 && (
-        <div className="text-center py-12">
+        <div className="hidden md:block text-center py-12">
           <div className="text-gray-500">
             <CreditCard className="w-12 h-12 mx-auto mb-4" />
             <p className="text-lg font-medium">Nenhum recibo encontrado</p>

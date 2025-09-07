@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: README do projeto ReciboFast
-# Data: 06-09-2025
+# Data: 07-09-2025
 
 # 🧾 ReciboFast
 
@@ -24,7 +24,7 @@ O **ReciboFast** é uma Progressive Web Application (PWA) moderna desenvolvida p
 - 📄 **Geração de Recibos**: PDFs profissionais com assinatura digital
 - ✍️ **Assinaturas Digitais**: Upload e aplicação de assinaturas personalizadas
 - 🔐 **QR Code**: Verificação de autenticidade dos recibos
-- 📊 **Dashboard**: Resumos financeiros e estatísticas em tempo real
+- 📊 **Dashboard**: Resumos financeiros; atividade recente integrada ao Supabase (rendas criadas e pagamentos recebidos)
 - 🔒 **Segurança**: Autenticação via Google OAuth e isolamento de dados por usuário
 - 📱 **PWA**: Funciona offline e pode ser instalada como app nativo
 
@@ -323,12 +323,12 @@ ReciboFast/
 - **Fase 5**: Integração Frontend-Backend (95%)
 
 ### Em Desenvolvimento 🔄
-- Dashboard com resumos financeiros
+- Dashboard com resumos financeiros avançados (cards com métricas reais)
 - Correções de lint em arquivos legados
 - Testes de integração completos
 
 ### Próximas Fases 📋
-- **Fase 6**: Assinaturas e Recibos
+- **Fase 6**: Assinaturas e Recibos (observação: Recibos não possuem vencimento; fluxo simplificado de emissão)
 - **Fase 7**: Sincronização e Offline
 - **Fase 8**: Telemetria e Segurança
 - **Fase 9**: Docker e Deploy

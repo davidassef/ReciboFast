@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 10 performance otimizacao
+# Data: 07-09-2025
+
 # ⚡ Performance e Otimização - Backend ReciboFast
 
 **Autor:** David Assef  

@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: PLANO_TRADUCAO_MENSAGENS_ERRO
+# Data: 07-09-2025
+
 # Plano de Tradução de Mensagens de Erro
 
 **Autor:** David Assef  

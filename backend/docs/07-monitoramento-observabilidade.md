@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 07 monitoramento observabilidade
+# Data: 07-09-2025
+
 # 📊 Monitoramento e Observabilidade - Backend ReciboFast
 
 **Autor:** David Assef  

@@ -39,6 +39,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
     include_signature: false,
     signature_id: null,
     include_qr_code: true,
+    include_account_logo: true,
     ...initialData
   });
 
@@ -186,7 +187,8 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
       payment_date: new Date().toISOString().split('T')[0],
       include_signature: false,
       signature_id: null,
-      include_qr_code: true
+      include_qr_code: true,
+      include_account_logo: true
     });
     setValidation({ isValid: true, errors: {} });
     setGeneratedReceiptId(null);
@@ -326,6 +328,15 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <Checkbox
+                id="include_account_logo"
+                checked={!!formData.include_account_logo}
+                onCheckedChange={(checked) => updateField('include_account_logo', checked)}
+              />
+              <Label htmlFor="include_account_logo">Exibir sua logo</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
                 id="include_qr_code"
                 checked={formData.include_qr_code}
                 onCheckedChange={(checked) => updateField('include_qr_code', checked)}
@@ -344,12 +355,13 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
                   }
                 }}
               />
-              <Label htmlFor="include_signature">Incluir assinatura digital</Label>
+              <Label htmlFor="include_signature">Usar sua assinatura</Label>
             </div>
 
             {formData.include_signature && (
               <div className="ml-6 space-y-2">
-                <Label htmlFor="signature_id">Selecionar Assinatura</Label>
+                <Label htmlFor="signature_id">Selecionar sua assinatura</Label>
+                <p className="text-xs text-muted-foreground">A assinatura será aplicada ao PDF do recibo.</p>
                 {isLoadingSignatures ? (
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -360,7 +372,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
                     value={formData.signature_id || ''}
                     onValueChange={(value) => updateField('signature_id', value)}
                   >
-                    <SelectTrigger className={validation.errors.signature_id ? 'border-red-500' : ''}>
+                    <SelectTrigger className={(validation.errors.signature_id ? 'border-red-500 ' : '') + 'w-full sm:max-w-xs'}>
                       <SelectValue placeholder="Selecione uma assinatura" />
                     </SelectTrigger>
                     <SelectContent>

@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 02 estrutura projeto
+# Data: 07-09-2025
+
 # 📁 Estrutura do Projeto - Frontend ReciboFast
 
 **Autor:** David Assef  

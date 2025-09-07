@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Arquitetura Técnica - Sistema de Assinaturas e Recibos ReciboFast
-# Data: 06-09-2025
+# Data: 07-09-2025
 
 # Arquitetura Técnica - Sistema de Assinaturas e Recibos
 

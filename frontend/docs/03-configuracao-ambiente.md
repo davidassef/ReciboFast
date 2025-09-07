@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 03 configuracao ambiente
+# Data: 07-09-2025
+
 # ⚙️ Configuração e Ambiente - Frontend ReciboFast
 
 **Autor:** David Assef  

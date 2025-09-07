@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 06 gerenciamento estado
+# Data: 07-09-2025
+
 # 🗃️ Gerenciamento de Estado - Frontend ReciboFast
 
 **Autor:** David Assef  

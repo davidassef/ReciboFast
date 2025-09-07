@@ -45,6 +45,7 @@ func NewRouter(deps AppDeps) http.Handler {
 	// Repositories
 	incomeRepo := repositories.NewIncomeRepository(deps.DB)
 	signRepo := repositories.NewSignatureRepository(deps.DB)
+	receiptRepo := repositories.NewReceiptRepository(deps.DB)
 
 	// Services
 	incomeService := services.NewIncomeService(incomeRepo)
@@ -62,6 +63,8 @@ func NewRouter(deps AppDeps) http.Handler {
 	incomeHandlers := handlers.NewIncomeHandlers(incomeService, deps.Logger)
 	// Signature Handlers
 	signatureHandlers := handlers.NewSignatureHandlers(signatureService, deps.Logger, deps.Cfg, storeClient, signRepo)
+	// Receipt Handlers
+	receiptHandlers := handlers.NewReceiptHandlers(receiptRepo, deps.Logger)
 
 	// Healthcheck
 	r.Get("/healthz", h.Health)
@@ -92,6 +95,16 @@ func NewRouter(deps AppDeps) http.Handler {
 		r.Route("/signatures", func(r chi.Router) {
 			r.Use(SupabaseAuth(deps))
 			r.Post("/", signatureHandlers.UploadSignature)
+		})
+
+		// Rotas de recibos (protegidas por autenticação)
+		r.Route("/receipts", func(r chi.Router) {
+			r.Use(SupabaseAuth(deps))
+			r.Get("/", receiptHandlers.ListReceipts)
+			r.Post("/", receiptHandlers.CreateReceipt)
+			r.Get("/{id}", receiptHandlers.GetReceipt)
+			r.Put("/{id}", receiptHandlers.UpdateReceipt)
+			r.Delete("/{id}", receiptHandlers.DeleteReceipt)
 		})
 	})
 

@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 04 apis endpoints
+# Data: 07-09-2025
+
 # 🌐 APIs e Endpoints - Backend ReciboFast
 
 **Autor:** David Assef  

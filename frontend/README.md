@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: README
+# Data: 07-09-2025
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

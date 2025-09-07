@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de gerenciamento de contratos
-// Data: 05-09-2025
+// Data: 06-09-2025
 // MIT License
 
 import React, { useEffect, useState } from 'react';
@@ -22,6 +22,10 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { SignatureService } from '../services/signatureService';
+
+type ClausulaItem = { id: string; label: string; conteudo: string };
+type Clausula = { id: string; titulo: string; conteudo: string; itens?: ClausulaItem[] };
 
 interface Contrato {
   id: string;
@@ -34,10 +38,15 @@ interface Contrato {
   tipo: string;
   descricao: string;
   documento: string; // CPF ou CNPJ obrigatório
-  signatureUrl?: string; // assinatura padrão selecionada para o contrato
+  signatureId?: string; // ID da assinatura selecionada
+  signatureUrl?: string; // URL resolvida para preview/print
+  objeto?: string;
+  clausulas?: Clausula[];
+  issuerName?: string; // Emitir em nome de outra pessoa
+  issuerDocumento?: string; // Documento do emissor alternativo
 }
 
-const mockContratos: Contrato[] = [
+const _mockContratos: Contrato[] = [
   {
     id: '1',
     numero: 'CONT-001',
@@ -106,7 +115,7 @@ const Contratos: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [contratos, setContratos] = useState<Contrato[]>(mockContratos);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
   const [showNovoContrato, setShowNovoContrato] = useState(false);
   const [novoContrato, setNovoContrato] = useState<Partial<Contrato>>({
     numero: '',
@@ -127,8 +136,27 @@ const Contratos: React.FC = () => {
   const [novoValorInput, setNovoValorInput] = useState<string>('');
   const [editValorInput, setEditValorInput] = useState<string>('');
   const [defaultSignatureUrl, setDefaultSignatureUrl] = useState<string | null>(null);
+  const [defaultSignaturePath, setDefaultSignaturePath] = useState<string | null>(null);
   const [showSignatureSettings, setShowSignatureSettings] = useState(false);
   const [signatureUploading, setSignatureUploading] = useState(false);
+  // Campos dinâmicos: objetivo e cláusulas
+  const [novoObjeto, setNovoObjeto] = useState<string>('');
+  const [novoClausulas, setNovoClausulas] = useState<Clausula[]>([]);
+  const [editObjeto, setEditObjeto] = useState<string>('');
+  const [editClausulas, setEditClausulas] = useState<Clausula[]>([]);
+  // Assinaturas: opções e checkboxes controlados
+  const [signatureOptions, setSignatureOptions] = useState<Array<{ id: string; url: string; name: string }>>([]);
+  const [novoUseSignature, setNovoUseSignature] = useState<boolean>(false);
+  const [editUseSignature, setEditUseSignature] = useState<boolean>(false);
+  // Emitir em nome de outra pessoa
+  const [novoEmitirOutro, setNovoEmitirOutro] = useState<boolean>(false);
+  const [editEmitirOutro, setEditEmitirOutro] = useState<boolean>(false);
+  // Exclusão segura com confirmação de senha
+  const [showDeleteContrato, setShowDeleteContrato] = useState(false);
+  const [deleteTargetContrato, setDeleteTargetContrato] = useState<Contrato | null>(null);
+  const [deletePasswordContrato, setDeletePasswordContrato] = useState('');
+  const [deleteLoadingContrato, setDeleteLoadingContrato] = useState(false);
+  const [deleteErrorContrato, setDeleteErrorContrato] = useState<string | null>(null);
 
   // Helpers CPF/CNPJ
   const onlyDigits = (v: string) => (v || '').replace(/\D/g, '');
@@ -180,15 +208,41 @@ const Contratos: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const path = (user?.user_metadata as any)?.default_signature_path as string | undefined;
-        if (!path) { setDefaultSignatureUrl(null); return; }
+        if (!path) { setDefaultSignatureUrl(null); setDefaultSignaturePath(null); return; }
         const { data: signed } = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
         setDefaultSignatureUrl(signed?.signedUrl || null);
+        setDefaultSignaturePath(path);
       } catch {
         setDefaultSignatureUrl(null);
+        setDefaultSignaturePath(null);
       }
     };
     loadDefaultSignature();
   }, []);
+
+  // Sincroniza assinaturas automaticamente ao abrir modais de novo/editar
+  useEffect(() => {
+    const loadSignatures = async () => {
+      try {
+        const gallery = await SignatureService.getUserSignatures();
+        const opts = gallery.map(i => ({ id: i.id, url: i.thumbnail_url, name: i.display_name || i.name }));
+        setSignatureOptions(opts);
+      } catch (e) {
+        console.warn('Falha ao carregar assinaturas para contratos:', e);
+      }
+    };
+    if (showNovoContrato || showEditContrato) {
+      loadSignatures();
+    }
+  }, [showNovoContrato, showEditContrato]);
+
+  // Inicializa estado do checkbox quando abre os modais
+  useEffect(() => {
+    if (showNovoContrato) setNovoUseSignature(!!defaultSignatureUrl || !!novoContrato.signatureUrl || !!novoContrato.signatureId);
+  }, [showNovoContrato, defaultSignatureUrl, novoContrato.signatureUrl, novoContrato.signatureId]);
+  useEffect(() => {
+    if (showEditContrato) setEditUseSignature(!!defaultSignatureUrl || !!editContrato.signatureUrl || !!editContrato.signatureId);
+  }, [showEditContrato, defaultSignatureUrl, editContrato.signatureUrl, editContrato.signatureId]);
 
   const filteredContratos = contratos.filter(contrato => {
     const matchesSearch = contrato.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -221,7 +275,7 @@ const Contratos: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
   };
 
-  const handleCreateContrato = (e: React.FormEvent) => {
+  const handleCreateContrato = async (e: React.FormEvent) => {
     e.preventDefault();
     const id = (window.crypto && 'randomUUID' in window.crypto) ? window.crypto.randomUUID() : String(Date.now());
     const numero = (novoContrato.numero && novoContrato.numero.trim()) || `CONT-${String(contratos.length + 1).padStart(3, '0')}`;
@@ -237,6 +291,19 @@ const Contratos: React.FC = () => {
       alert('Informe um CPF ou CNPJ válido para o cliente (obrigatório).');
       return;
     }
+    // Resolver ID/URL da assinatura se checkbox ativo e não houver seleção explícita
+    let resolvedSignatureId: string | undefined = novoContrato.signatureId as string | undefined;
+    let resolvedSignatureUrl: string | undefined = novoContrato.signatureUrl as string | undefined;
+    if (novoUseSignature && !resolvedSignatureId && defaultSignaturePath) {
+      try {
+        const preview = await SignatureService.getSignatureByPath(defaultSignaturePath);
+        resolvedSignatureId = preview.id;
+        resolvedSignatureUrl = preview.url;
+      } catch (err) {
+        console.warn('Não foi possível resolver assinatura padrão (contrato novo):', err);
+      }
+    }
+
     const novo: Contrato = {
       id,
       numero,
@@ -248,12 +315,20 @@ const Contratos: React.FC = () => {
       tipo: novoContrato.tipo || 'Aluguel',
       descricao: novoContrato.descricao || '',
       documento: doc,
-      signatureUrl: novoContrato.signatureUrl || undefined
+      signatureId: novoUseSignature ? resolvedSignatureId : undefined,
+      signatureUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
+      objeto: novoObjeto || undefined,
+      clausulas: novoClausulas.length ? novoClausulas : undefined,
+      issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
+      issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined
     };
     setContratos(prev => [novo, ...prev]);
     setShowNovoContrato(false);
-    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureUrl: undefined });
+    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined });
     setNovoValorInput('');
+    setNovoObjeto('');
+    setNovoClausulas([]);
+    setNovoEmitirOutro(false);
   };
 
   const handleViewContrato = (contrato: Contrato) => {
@@ -309,18 +384,26 @@ const Contratos: React.FC = () => {
               <div class="field"><span class="label">Início</span><span>${inicio}</span></div>
               <div class="field"><span class="label">Término</span><span>${fim}</span></div>
               <div class="field"><span class="label">Status</span><span>${getStatusLabel(contrato.status)}</span></div>
+              ${(contrato.issuerName || contrato.issuerDocumento) ? `<div class="field"><span class="label">Emitido por</span><span>${contrato.issuerName || ''}${contrato.issuerDocumento ? ' • ' + contrato.issuerDocumento : ''}</span></div>` : ''}
             </div>
           </div>
           <div class="section">
-            <div class="label">Objeto</div>
-            <div class="clause">${contrato.descricao || 'As partes acordam a prestação de serviços conforme especificações fornecidas pelo contratante.'}</div>
+            <div class="label">Objeto do Contrato</div>
+            <div class="clause">${(contrato.objeto || contrato.descricao || 'As partes acordam a prestação de serviços conforme especificações fornecidas pelo contratante.')}</div>
           </div>
+          ${Array.isArray(contrato.clausulas) && contrato.clausulas.length ? `
           <div class="section">
-            <div class="label">Cláusulas Gerais</div>
-            <div class="clause">
-              1. O pagamento será efetuado conforme acordado entre as partes, podendo ser mensal ou por etapa entregue. 2. O presente contrato vigorará entre as datas informadas, podendo ser rescindido de comum acordo ou por descumprimento contratual, nos termos da lei. 3. Foro: As partes elegem o foro da comarca do contratante para dirimir quaisquer dúvidas oriundas deste instrumento.
-            </div>
-          </div>
+            <div class="label">Cláusulas</div>
+            ${contrato.clausulas.map((cl, idx) => `
+              <div class="clause"><strong>${cl.titulo || `Cláusula ${idx+1}`}:</strong> ${cl.conteudo || ''}
+              ${Array.isArray(cl.itens) && cl.itens.length ? `
+                <div style="margin-left:16px; margin-top:6px">
+                  ${cl.itens.map(it => `<div><strong>${it.label}:</strong> ${it.conteudo}</div>`).join('')}
+                </div>
+              `: ''}
+              </div>
+            `).join('')}
+          </div>`: ''}
           <div class="signatures">
             <div class="sig">
               ${contrato.signatureUrl ? `<img class="signature-img" src="${contrato.signatureUrl}" alt="Assinatura" />` : ''}
@@ -338,11 +421,20 @@ const Contratos: React.FC = () => {
     `;
   };
 
-  const handleDownloadContrato = (contrato: Contrato) => {
+  const handleDownloadContrato = async (contrato: Contrato) => {
+    const c: Contrato = { ...contrato };
+    if (c.signatureId && !c.signatureUrl) {
+      try {
+        const preview = await SignatureService.getSignatureById(c.signatureId);
+        c.signatureUrl = preview.url;
+      } catch (err) {
+        console.warn('Não foi possível resolver URL da assinatura por ID (contrato):', err);
+      }
+    }
     const win = window.open('', '_blank');
     if (!win) return;
     win.document.open();
-    win.document.write(generatePrintableContratoHtml(contrato));
+    win.document.write(generatePrintableContratoHtml(c));
     win.document.close();
   };
 
@@ -351,12 +443,27 @@ const Contratos: React.FC = () => {
     setEditContrato({ ...contrato });
     setEditValorInput(formatNumberToCurrencyBR(contrato.valor));
     setShowEditContrato(true);
+    setEditObjeto(contrato.objeto || '');
+    setEditClausulas(contrato.clausulas ? JSON.parse(JSON.stringify(contrato.clausulas)) : []);
   };
 
-  const handleEditContratoSubmit = (e: React.FormEvent) => {
+  const handleEditContratoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contratoSelecionado) return;
     const novoValor = parseCurrencyBRToNumber(editValorInput);
+    // Resolver assinatura padrão se checkbox ativo e sem seleção explícita
+    let resolvedSignatureId: string | undefined = editContrato.signatureId ?? contratoSelecionado.signatureId;
+    let resolvedSignatureUrl: string | undefined = editContrato.signatureUrl ?? contratoSelecionado.signatureUrl;
+    if (editUseSignature && !resolvedSignatureId && defaultSignaturePath) {
+      try {
+        const preview = await SignatureService.getSignatureByPath(defaultSignaturePath);
+        resolvedSignatureId = preview.id;
+        resolvedSignatureUrl = preview.url;
+      } catch (err) {
+        console.warn('Não foi possível resolver assinatura padrão (contrato edição):', err);
+      }
+    }
+
     setContratos(prev => prev.map(c => c.id === contratoSelecionado.id ? {
       ...c,
       numero: (editContrato.numero || c.numero)!,
@@ -366,18 +473,65 @@ const Contratos: React.FC = () => {
       dataFim: (editContrato.dataFim || c.dataFim)!,
       status: (editContrato.status as Contrato['status']) || c.status,
       tipo: editContrato.tipo || c.tipo,
-      descricao: editContrato.descricao ?? c.descricao
+      descricao: editContrato.descricao ?? c.descricao,
+      signatureId: editUseSignature ? (resolvedSignatureId ?? undefined) : undefined,
+      signatureUrl: editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined,
+      objeto: editObjeto || undefined,
+      clausulas: editClausulas.length ? editClausulas : undefined,
+      issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined,
+      issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined
     } : c));
     setShowEditContrato(false);
     setContratoSelecionado(null);
     setEditContrato({});
     setEditValorInput('');
+    setEditObjeto('');
+    setEditClausulas([]);
+    setEditEmitirOutro(false);
   };
 
-  const handleDeleteContrato = (contrato: Contrato) => {
-    if (window.confirm(`Excluir o contrato ${contrato.numero}?`)) {
-      setContratos(prev => prev.filter(c => c.id !== contrato.id));
+  const openDeleteContrato = (contrato: Contrato) => {
+    setDeleteTargetContrato(contrato);
+    setDeletePasswordContrato('');
+    setDeleteErrorContrato(null);
+    setShowDeleteContrato(true);
+  };
+
+  const confirmDeleteContrato = async () => {
+    if (!deleteTargetContrato) return;
+    setDeleteLoadingContrato(true);
+    setDeleteErrorContrato(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = (user?.email || '').trim();
+      if (!email) {
+        setDeleteErrorContrato('Sessão inválida. Faça login novamente.');
+        setDeleteLoadingContrato(false);
+        return;
+      }
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: deletePasswordContrato });
+      if (authErr) {
+        setDeleteErrorContrato('Senha incorreta. Tente novamente.');
+        setDeleteLoadingContrato(false);
+        return;
+      }
+      // Sem backend de contratos ainda: remove localmente
+      setContratos(prev => prev.filter(c => c.id !== deleteTargetContrato.id));
+      setShowDeleteContrato(false);
+      setDeleteTargetContrato(null);
+      setDeletePasswordContrato('');
+    } catch (err) {
+      setDeleteErrorContrato('Erro inesperado ao confirmar exclusão.');
+    } finally {
+      setDeleteLoadingContrato(false);
     }
+  };
+
+  const cancelDeleteContrato = () => {
+    setShowDeleteContrato(false);
+    setDeleteTargetContrato(null);
+    setDeletePasswordContrato('');
+    setDeleteErrorContrato(null);
   };
 
   return (
@@ -390,11 +544,40 @@ const Contratos: React.FC = () => {
             Gerencie seus contratos (aluguéis, prestação de serviços e outros)
           </p>
         </div>
-        <button onClick={() => setShowNovoContrato(true)} className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <button onClick={() => setShowNovoContrato(true)} className="mt-4 sm:mt-0 inline-flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-auto self-start">
           <Plus className="w-4 h-4 mr-2" />
           Novo Contrato
         </button>
       </div>
+
+      {showDeleteContrato && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={cancelDeleteContrato} />
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteContrato} aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmar exclusão</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Esta ação é irreversível. Para excluir o contrato <strong>{deleteTargetContrato?.numero}</strong>, confirme sua senha.
+            </p>
+            <input
+              type="password"
+              placeholder="Sua senha"
+              value={deletePasswordContrato}
+              onChange={(e) => setDeletePasswordContrato(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+            />
+            {deleteErrorContrato && <div className="text-sm text-red-600 mb-2">{deleteErrorContrato}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={cancelDeleteContrato} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" disabled={deleteLoadingContrato}>Cancelar</button>
+              <button onClick={confirmDeleteContrato} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50" disabled={deleteLoadingContrato || !deletePasswordContrato}>
+                {deleteLoadingContrato ? 'Excluindo...' : 'Excluir definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -440,6 +623,7 @@ const Contratos: React.FC = () => {
           </div>
         </div>
       </div>
+      
 
       {/* Modal: Novo Contrato */}
       {showNovoContrato && (
@@ -496,17 +680,95 @@ const Contratos: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura padrão do contrato</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
                 <div className="flex items-center gap-3">
-                  <input id="contrato-use-signature" type="checkbox" checked={!!novoContrato.signatureUrl} onChange={(e) => setNovoContrato(prev => ({ ...prev, signatureUrl: e.target.checked ? (defaultSignatureUrl || undefined) : undefined }))} className="h-4 w-4" />
-                  <label htmlFor="contrato-use-signature" className="text-sm text-gray-700">Usar assinatura padrão da conta</label>
-                  {novoContrato.signatureUrl ? (
-                    <img src={novoContrato.signatureUrl as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
-                  ) : defaultSignatureUrl ? (
-                    <img src={defaultSignatureUrl} alt="Assinatura padrão" className="h-10 object-contain border rounded bg-white px-2" />
+                  <input
+                    id="contrato-use-signature"
+                    type="checkbox"
+                    checked={novoUseSignature}
+                    onChange={(e) => {
+                      setNovoUseSignature(e.target.checked);
+                      if (!e.target.checked) {
+                        setNovoContrato(prev => ({ ...prev, signatureUrl: undefined }));
+                      }
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="contrato-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
+                  {signatureOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={novoContrato.signatureId || ''}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          if (id === '__create_sig__') { navigate('/assinaturas'); return; }
+                          const opt = signatureOptions.find(o => o.id === id);
+                          setNovoContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: opt?.url }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                        disabled={!novoUseSignature}
+                      >
+                        <option value="">Selecione</option>
+                        {signatureOptions.map(opt => (
+                          <option key={opt.id} value={opt.id}>{opt.name}</option>
+                        ))}
+                        <option value="__create_sig__">Cadastrar Nova Assinatura</option>
+                      </select>
+                      {novoUseSignature && (novoContrato.signatureUrl || defaultSignatureUrl) && (
+                        <img src={(novoContrato.signatureUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
                   ) : (
-                    <span className="text-xs text-gray-500">Nenhuma assinatura cadastrada. Cadastre em Perfil.</span>
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                      disabled={!novoUseSignature}
+                    >
+                      <option value="">Selecione</option>
+                      <option value="__create_sig__">Cadastrar Nova Assinatura</option>
+                    </select>
                   )}
+                </div>
+              </div>
+              {/* Objetivo do contrato */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo do contrato</label>
+                <textarea value={novoObjeto} onChange={(e) => setNovoObjeto(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} placeholder="Descreva o objeto do contrato" />
+              </div>
+              {/* Cláusulas dinâmicas */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Cláusulas</label>
+                  <button type="button" onClick={() => setNovoClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
+                </div>
+                <div className="space-y-3">
+                  {novoClausulas.map((cl, idx) => (
+                    <div key={cl.id} className="border rounded p-2">
+                      <div className="grid grid-cols-1 gap-2">
+                        <input value={cl.titulo} onChange={(e) => setNovoClausulas(prev => prev.map(c => c.id===cl.id? { ...c, titulo: e.target.value }: c))} className="px-2 py-1 border rounded text-sm" placeholder={`Cláusula ${idx+1}`} />
+                        <textarea value={cl.conteudo} onChange={(e) => setNovoClausulas(prev => prev.map(c => c.id===cl.id? { ...c, conteudo: e.target.value }: c))} className="px-2 py-1 border rounded text-sm" rows={2} placeholder="Conteúdo da cláusula" />
+                        <div className="flex justify-end">
+                          <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => setNovoClausulas(prev => prev.filter(c => c.id !== cl.id))}>Remover cláusula</button>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-600">Subitens</span>
+                            <button type="button" className="text-xs px-2 py-1 border rounded hover:bg-gray-50" onClick={() => setNovoClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: [...(c.itens||[]), { id: crypto.randomUUID(), label: `${idx+1}.${(c.itens?.length||0)+1}`, conteudo: '' }] }: c))}>Adicionar subitem</button>
+                          </div>
+                          <div className="space-y-1">
+                            {(cl.itens || []).map((it, jdx) => (
+                              <div key={it.id} className="grid grid-cols-5 gap-2 items-center">
+                                <input value={it.label} onChange={(e) => setNovoClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: (c.itens||[]).map(x => x.id===it.id? { ...x, label: e.target.value }: x) }: c))} className="px-2 py-1 border rounded text-sm col-span-1" placeholder={`${idx+1}.${jdx+1}`} />
+                                <input value={it.conteudo} onChange={(e) => setNovoClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: (c.itens||[]).map(x => x.id===it.id? { ...x, conteudo: e.target.value }: x) }: c))} className="px-2 py-1 border rounded text-sm col-span-3" placeholder="Conteúdo do subitem" />
+                                <button type="button" className="text-xs text-red-600 hover:underline col-span-1" onClick={() => setNovoClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: (c.itens||[]).filter(x => x.id !== it.id) }: c))}>Remover</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -632,17 +894,81 @@ const Contratos: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura padrão do contrato</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
                 <div className="flex items-center gap-3">
-                  <input id="contrato-edit-use-signature" type="checkbox" checked={!!editContrato.signatureUrl} onChange={(e) => setEditContrato(prev => ({ ...prev, signatureUrl: e.target.checked ? (defaultSignatureUrl || undefined) : undefined }))} className="h-4 w-4" />
-                  <label htmlFor="contrato-edit-use-signature" className="text-sm text-gray-700">Usar assinatura padrão da conta</label>
-                  {editContrato.signatureUrl ? (
+                  <input
+                    id="contrato-edit-use-signature"
+                    type="checkbox"
+                    checked={editUseSignature}
+                    onChange={(e) => {
+                      setEditUseSignature(e.target.checked);
+                      if (!e.target.checked) setEditContrato(prev => ({ ...prev, signatureUrl: undefined }));
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="contrato-edit-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
+                  <select
+                    value={editContrato.signatureId || ''}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const opt = signatureOptions.find(o => o.id === id);
+                      setEditContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: opt?.url }));
+                    }}
+                    className="px-3 py-2 border rounded-lg text-sm"
+                    disabled={!editUseSignature || signatureOptions.length === 0}
+                  >
+                    <option value="">Padrão da conta (assinatura)</option>
+                    {signatureOptions.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.name}</option>
+                    ))}
+                  </select>
+                  {editUseSignature && (editContrato.signatureUrl ? (
                     <img src={editContrato.signatureUrl as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
                   ) : defaultSignatureUrl ? (
                     <img src={defaultSignatureUrl} alt="Assinatura padrão" className="h-10 object-contain border rounded bg-white px-2" />
                   ) : (
                     <span className="text-xs text-gray-500">Nenhuma assinatura cadastrada. Cadastre em Perfil.</span>
-                  )}
+                  ))}
+                </div>
+              </div>
+              {/* Objetivo do contrato (edição) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo do contrato</label>
+                <textarea value={editObjeto} onChange={(e) => setEditObjeto(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} placeholder="Descreva o objeto do contrato" />
+              </div>
+              {/* Cláusulas dinâmicas (edição) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Cláusulas</label>
+                  <button type="button" onClick={() => setEditClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
+                </div>
+                <div className="space-y-3">
+                  {editClausulas.map((cl, idx) => (
+                    <div key={cl.id} className="border rounded p-2">
+                      <div className="grid grid-cols-1 gap-2">
+                        <input value={cl.titulo} onChange={(e) => setEditClausulas(prev => prev.map(c => c.id===cl.id? { ...c, titulo: e.target.value }: c))} className="px-2 py-1 border rounded text-sm" placeholder={`Cláusula ${idx+1}`} />
+                        <textarea value={cl.conteudo} onChange={(e) => setEditClausulas(prev => prev.map(c => c.id===cl.id? { ...c, conteudo: e.target.value }: c))} className="px-2 py-1 border rounded text-sm" rows={2} placeholder="Conteúdo da cláusula" />
+                        <div className="flex justify-end">
+                          <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => setEditClausulas(prev => prev.filter(c => c.id !== cl.id))}>Remover cláusula</button>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-600">Subitens</span>
+                            <button type="button" className="text-xs px-2 py-1 border rounded hover:bg-gray-50" onClick={() => setEditClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: [...(c.itens||[]), { id: crypto.randomUUID(), label: `${idx+1}.${(c.itens?.length||0)+1}`, conteudo: '' }] }: c))}>Adicionar subitem</button>
+                          </div>
+                          <div className="space-y-1">
+                            {(cl.itens || []).map((it, jdx) => (
+                              <div key={it.id} className="grid grid-cols-5 gap-2 items-center">
+                                <input value={it.label} onChange={(e) => setEditClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: (c.itens||[]).map(x => x.id===it.id? { ...x, label: e.target.value }: x) }: c))} className="px-2 py-1 border rounded text-sm col-span-1" placeholder={`${idx+1}.${jdx+1}`} />
+                                <input value={it.conteudo} onChange={(e) => setEditClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: (c.itens||[]).map(x => x.id===it.id? { ...x, conteudo: e.target.value }: x) }: c))} className="px-2 py-1 border rounded text-sm col-span-3" placeholder="Conteúdo do subitem" />
+                                <button type="button" className="text-xs text-red-600 hover:underline col-span-1" onClick={() => setEditClausulas(prev => prev.map(c => c.id===cl.id? { ...c, itens: (c.itens||[]).filter(x => x.id !== it.id) }: c))}>Remover</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -755,7 +1081,7 @@ const Contratos: React.FC = () => {
                   <button onClick={() => handleEditContratoOpen(contrato)} className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50" title="Editar">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDeleteContrato(contrato)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Excluir">
+                  <button onClick={() => openDeleteContrato(contrato)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Excluir">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -844,7 +1170,7 @@ const Contratos: React.FC = () => {
                       <button onClick={() => handleEditContratoOpen(contrato)} className="text-gray-600 hover:text-gray-900" title="Editar">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDeleteContrato(contrato)} className="text-red-600 hover:text-red-900" title="Excluir">
+                      <button onClick={() => openDeleteContrato(contrato)} className="text-red-600 hover:text-red-900" title="Excluir">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -857,7 +1183,7 @@ const Contratos: React.FC = () => {
       </div>
 
       {filteredContratos.length === 0 && (
-        <div className="text-center py-12">
+        <div className="hidden md:block text-center py-12">
           <div className="text-gray-500">
             <FileText className="w-12 h-12 mx-auto mb-4" />
             <p className="text-lg font-medium">Nenhum contrato encontrado</p>

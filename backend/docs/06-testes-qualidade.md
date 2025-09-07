@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 06 testes qualidade
+# Data: 07-09-2025
+
 # 🧪 Testes e Qualidade de Código - Backend ReciboFast
 
 **Autor:** David Assef  

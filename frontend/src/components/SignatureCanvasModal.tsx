@@ -7,6 +7,7 @@ import { signaturesService } from '../services/signaturesService';
 import { SignatureCanvasData, Signature } from '../types/signature';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
+import { Button } from './ui/Button';
 
 export interface SignatureCanvasModalProps {
   open: boolean;

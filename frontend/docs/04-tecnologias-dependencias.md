@@ -1,3 +1,8 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: 04 tecnologias dependencias
+# Data: 07-09-2025
+
 # 🛠️ Tecnologias e Dependências - Frontend ReciboFast
 
 **Autor:** David Assef  
