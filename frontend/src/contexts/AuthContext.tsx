@@ -1,10 +1,10 @@
 // Autor: David Assef
 // Descrição: Contexto de autenticação para gerenciar estado do usuário
-// Data: 05-09-2025
+// Data: 07-09-2025
 // MIT License
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { auth, User, AuthSession } from '../lib/supabase';
+import { auth, User, AuthSession, SUPABASE_READY } from '../lib/supabase';
 import { mapOAuthError, logOAuthError } from '../utils/oauthErrors';
 
 interface AuthContextType {
@@ -47,6 +47,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Verificar sessão inicial
     const getInitialSession = async () => {
       try {
+        if (!SUPABASE_READY) {
+          // Evita chamadas ao Supabase quando variáveis não estão configuradas (ex.: primeiro deploy)
+          setSession(null);
+          setUser(null);
+          return;
+        }
         const { session: initialSession } = await auth.getCurrentSession();
         setSession(initialSession);
         setUser(initialSession?.user || null);
@@ -59,20 +65,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     getInitialSession();
 
-    // Listener para mudanças de autenticação
-    const { data: { subscription } } = auth.onAuthStateChange(
-      async (event: string, session: any) => {
-        console.log('Auth state changed:', event, session);
-        const currentSession = session as AuthSession | null;
-        setSession(currentSession);
-        setUser(currentSession?.user || null);
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      subscription?.unsubscribe();
-    };
+    // Listener para mudanças de autenticação (apenas se Supabase estiver configurado)
+    if (SUPABASE_READY) {
+      const { data: { subscription } } = auth.onAuthStateChange(
+        async (event: string, session: any) => {
+          console.log('Auth state changed:', event, session);
+          const currentSession = session as AuthSession | null;
+          setSession(currentSession);
+          setUser(currentSession?.user || null);
+          setLoading(false);
+        }
+      );
+      return () => {
+        subscription?.unsubscribe();
+      };
+    }
+    return () => {};
   }, []);
 
   // Atualiza flag de verificação quando o usuário muda
@@ -84,6 +92,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.') };
+      }
       const result = await auth.signIn(email, password);
       if (result.data?.session) {
         setSession(result.data.session);
@@ -101,6 +112,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string, metadata?: Record<string, unknown>) => {
     setLoading(true);
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.') };
+      }
       const result = await auth.signUp(email, password, metadata);
       return result;
     } catch (error) {
@@ -114,6 +128,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async () => {
     setLoading(true);
     try {
+      if (!SUPABASE_READY) {
+        setSession(null);
+        setUser(null);
+        return { error: null };
+      }
       const result = await auth.signOut();
       setSession(null);
       setUser(null);
@@ -128,6 +147,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const resetPassword = async (email: string) => {
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado.') };
+      }
       return await auth.resetPassword(email);
     } catch (error) {
       console.error('Erro ao resetar senha:', error);
@@ -137,6 +159,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const updatePassword = async (password: string) => {
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado.') };
+      }
       return await auth.updatePassword(password);
     } catch (error) {
       console.error('Erro ao atualizar senha:', error);
@@ -147,6 +172,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signInWithGoogle = async () => {
     setLoading(true);
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado.') };
+      }
       const result = await auth.signInWithGoogle();
       
       if (result.error) {
@@ -170,6 +198,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const updateProfile = async (updates: Record<string, unknown>) => {
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado.') };
+      }
       const result = await auth.updateProfile(updates);
       if (result.data?.user) {
         setUser(result.data.user);
@@ -183,6 +214,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const resendEmailConfirmation = async (email: string) => {
     try {
+      if (!SUPABASE_READY) {
+        return { data: null, error: new Error('Supabase não configurado.') };
+      }
       return await auth.resendEmailConfirmation(email);
     } catch (error) {
       console.error('Erro ao reenviar confirmação de e-mail:', error);
@@ -192,6 +226,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
+      if (!SUPABASE_READY) {
+        return;
+      }
       const { user: currentUser } = await auth.getCurrentUser();
       setUser(currentUser || null);
     } catch (error) {
