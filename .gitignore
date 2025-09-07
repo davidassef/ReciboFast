@@ -17,6 +17,14 @@ node_modules/
 *.env
 *.env.*
 
+# Env por subprojetos
+frontend/.env
+frontend/.env.*
+frontend/.env.local
+backend/.env
+backend/.env.*
+backend/.env.local
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
@@ -160,15 +168,37 @@ dist/
 .next/
 out/
 
+# Vercel/preview artifacts
+.vercel/
+frontend/.vercel/
+
+# Playwright outputs
+frontend/playwright-report/
+frontend/test-results/
+frontend/.playwright/**
+
+# Vitest/Jest outputs
+frontend/coverage/
+frontend/coverage-*
+
 # Vite
 .vite/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Vite preview cache
+frontend/.vite/**
+
 # ===== SUPABASE =====
 supabase/.branches
 supabase/.temp
 supabase/config.toml
+
+# ===== PACKAGE MANAGERS =====
+.pnpm-store/
+pnpm-lock.yaml
+yarn.lock
+npm-debug.log*
 
 # ===== DOCKER =====
 *.dockerignore
