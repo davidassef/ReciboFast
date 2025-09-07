@@ -33,7 +33,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'ReciboFast',
         short_name: 'ReciboFast',
@@ -65,16 +65,31 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        cleanupOutdatedCaches: true,
+        navigateFallback: '/index.html',
         runtimeCaching: [
+          // Backend do app (proxy /api em dev, backend real em prod)
           {
-            urlPattern: /^https:\/\/api\./i,
+            urlPattern: ({ url }) => url.pathname.startsWith('/api'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
-              }
+              cacheName: 'app-api-cache',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 },
+            }
+          },
+          // Supabase: evitar cache para endpoints de auth
+          {
+            urlPattern: ({ url }) => /supabase\.co\/auth\//.test(url.href),
+            handler: 'NetworkOnly',
+          },
+          // Supabase rest/storage (pode usar NetworkFirst com TTL curto)
+          {
+            urlPattern: ({ url }) => /supabase\.co\/(rest|storage)\//.test(url.href),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 },
             }
           }
         ]

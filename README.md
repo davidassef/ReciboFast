@@ -125,15 +125,12 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
 **Frontend (.env.local):**
-```bash
-cp frontend/.env.example frontend/.env.local
-```
-
-Edite o arquivo `frontend/.env.local`:
+Crie um arquivo `frontend/.env.local` com as variáveis abaixo (consulte também `frontend/ENV_EXAMPLE.txt`):
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-anonima
-VITE_API_BASE_URL=http://localhost:8080
+# Opcional (cliente REST usa base relativa /api por padrão via rewrites/proxy)
+# VITE_API_BASE_URL=/api/v1
 ```
 
 ### 4. Instalação das Dependências
@@ -213,30 +210,55 @@ go test -v ./...
 
 ## 📦 Build e Deploy
 
-### Build de Produção
+### Deploy recomendado (Frontend no Vercel, Backend no Render)
+
+1. **Backend (Render)**
+   - Crie um Web Service apontando para a pasta `backend/` do repositório (usa `backend/Dockerfile`).
+   - Defina as variáveis de ambiente:
+     - `ALLOWED_ORIGINS` — ex.: `https://seu-app.vercel.app, *.vercel.app` (wildcard suportado)
+     - Outras variáveis da sua API, se aplicável.
+   - Health check path: `/healthz`.
+   - Anote a URL pública, por exemplo: `https://recibofast-backend.onrender.com`.
+
+2. **Frontend (Vercel)**
+   - Importe o projeto com diretório raiz `frontend/`.
+   - Em `frontend/vercel.json`, substitua `RENDER_BACKEND_URL` pela URL pública do Render.
+   - Defina as variáveis de ambiente:
+     - `VITE_SUPABASE_URL`
+     - `VITE_SUPABASE_ANON_KEY`
+   - O Vercel executará `npm run build` e publicará o conteúdo de `dist/`.
+
+3. **Supabase (produção)**
+   - Authentication > URL Configuration:
+     - Redirect URLs: `https://seu-app.vercel.app/auth/callback`, `https://seu-app.vercel.app`
+   - CORS/domínios permitidos: adicione o domínio do Vercel (produção e opcionalmente preview).
+   - Revise RLS/Policies das tabelas usadas (ex.: `rf_contracts`, `rf_receipts`, assinaturas).
+
+### Build de Produção (local)
 
 **Frontend:**
 ```bash
 cd frontend
 npm run build
-# Arquivos gerados em: dist/
+# Saída em: dist/
 ```
 
 **Backend:**
 ```bash
 cd backend
 go build -o bin/recibofast cmd/api/main.go
-# Binário gerado em: bin/recibofast
+# Saída em: bin/recibofast
 ```
 
-### Docker
+### Docker (opcional)
+
+- Frontend: `frontend/Dockerfile` usa Node 20 (build) e NGINX (runtime) com SPA fallback (`frontend/nginx.conf`).
+- Backend: `backend/Dockerfile` compila e roda o binário (porta `PORT`).
 
 ```bash
-# Build das imagens
-docker-compose build
-
-# Deploy em produção
-docker-compose -f docker-compose.prod.yml up -d
+# Exemplo de build das imagens locais
+docker build -t recibofast-frontend ./frontend
+docker build -t recibofast-backend ./backend
 ```
 
 ## 📚 Documentação

@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Layout principal com navegação por tabs
-// Data: 05-09-2025
+// Data: 07-09-2025
 // MIT License
 
 import React from 'react';
@@ -17,6 +17,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import EmailVerificationBanner from './EmailVerificationBanner';
 import ErrorBoundary from './ErrorBoundary';
+import RouteTransition from './RouteTransition';
+import ScrollReveal from './ScrollReveal';
 
 interface TabItem {
   id: string;
@@ -111,9 +113,13 @@ export const Layout: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <ErrorBoundary>
-          {/* Banner de verificação de e-mail (gating de funcionalidades) */}
-          <EmailVerificationBanner />
-          <Outlet />
+          <RouteTransition>
+            {/* Banner de verificação de e-mail (gating de funcionalidades) */}
+            <ScrollReveal>
+              <EmailVerificationBanner />
+              <Outlet />
+            </ScrollReveal>
+          </RouteTransition>
         </ErrorBoundary>
       </main>
 

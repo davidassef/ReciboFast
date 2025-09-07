@@ -14,9 +14,14 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  // Bypass de autenticação para E2E/local apenas (não afeta produção)
+  const bypassAuth = (import.meta.env.MODE !== 'production') && typeof window !== 'undefined' &&
+    (() => {
+      try { return localStorage.getItem('e2e_bypass_auth') === '1'; } catch { return false; }
+    })();
 
   // Mostrar loading enquanto verifica autenticação
-  if (loading) {
+  if (loading && !bypassAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -28,7 +33,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Se não estiver autenticado, redirecionar para login
-  if (!user) {
+  if (!user && !bypassAuth) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

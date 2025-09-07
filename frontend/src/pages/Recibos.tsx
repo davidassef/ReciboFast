@@ -27,6 +27,9 @@ import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { SignatureService } from '../services/signatureService';
 import { receiptsApi } from '../services';
+import { ReceiptService as SupaReceiptService } from '../services/receiptService';
+import { ReceiptsMinimalService } from '../services/receiptsSupabaseService';
+import { generateRecurringReceipts } from '../utils/recibos';
 
 interface Recibo {
   id: string;
@@ -42,6 +45,7 @@ interface Recibo {
   cpf?: string; // CPF do cliente (opcional)
   signatureId?: string; // ID da assinatura selecionada (persistência)
   signatureDataUrl?: string; // Assinatura anexada (base64/dataURL)
+  contractId?: string; // vínculo opcional com contrato para automação
   issuerName?: string; // Emitir em nome de
   issuerDocumento?: string; // Documento do emissor alternativo
 }
@@ -93,6 +97,7 @@ const Recibos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [recibos, setRecibos] = useState<Recibo[]>([]);
+  const [loadedLocal, setLoadedLocal] = useState(false);
 
   // Persistência local simples
   useEffect(() => {
@@ -100,6 +105,34 @@ const Recibos: React.FC = () => {
       const saved = localStorage.getItem('recibos');
       if (saved) setRecibos(JSON.parse(saved));
     } catch {}
+    setLoadedLocal(true);
+  }, []);
+
+  // Geração automática de recibos recorrentes (local) a partir de contratos
+  useEffect(() => {
+    try {
+      const rawContracts = localStorage.getItem('contratos');
+      if (!rawContracts) return;
+      const contratos: any[] = JSON.parse(rawContracts);
+      if (!Array.isArray(contratos) || contratos.length === 0) return;
+
+      // Usa recibos já persistidos como base para evitar duplicatas em recarregamentos
+      const rawExisting = localStorage.getItem('recibos');
+      const existing: Recibo[] = rawExisting ? JSON.parse(rawExisting) : recibos;
+
+      const toCreate = generateRecurringReceipts(new Date(), contratos, existing);
+      if (toCreate.length > 0) {
+        setRecibos(prev => {
+          const byId = new Map(prev.map(p => [p.id, p]));
+          for (const n of toCreate) byId.set(n.id, n);
+          return Array.from(byId.values()).sort((a,b) => (b.dataEmissao || '').localeCompare(a.dataEmissao || ''));
+        });
+      }
+    } catch (e) {
+      console.warn('Falha ao processar recorrência local de contratos:', e);
+    }
+    // executa apenas na montagem
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -272,54 +305,84 @@ const Recibos: React.FC = () => {
     loadDefaultSignature();
   }, []);
 
-  // Carregar recibos do backend na montagem
+  // Carregar recibos do backend/Supabase somente após carregar localStorage
   useEffect(() => {
+    if (!loadedLocal) return;
     const load = async () => {
       try {
         const { data, error } = await receiptsApi.list(1, 50);
         if (error || !data) {
           // mantém dados locais (offline/localStorage)
-          return;
+          // tenta Supabase mesmo assim
+        } else {
+          const items = Array.isArray(data.items) ? data.items : [];
+          if (items.length > 0) {
+            const mapped: Recibo[] = items.map((it: any) => {
+              const numeroStr = typeof it.numero === 'number' ? `RB-${String(it.numero).padStart(3,'0')}` : (it.numero || 'RB-—');
+              const dateStr: string = (it.emitido_em || it.created_at || '').slice(0,10);
+              return {
+                id: it.id,
+                numero: numeroStr,
+                cliente: '—',
+                valor: 0,
+                dataEmissao: dateStr,
+                status: 'emitido',
+                descricao: '',
+                formaPagamento: 'PIX',
+                useLogo: false,
+                logoDataUrl: undefined,
+                cpf: undefined,
+                signatureId: it.signature_id || undefined,
+                signatureDataUrl: undefined,
+                issuerName: it.issuer_name || undefined,
+                issuerDocumento: it.issuer_document || undefined,
+              } as Recibo;
+            });
+            // Mescla com dados locais existentes para não perder itens criados offline
+            setRecibos((prev) => {
+              const byId = new Map(prev.map((p) => [p.id, p]));
+              mapped.forEach((m) => byId.set(m.id, m));
+              return Array.from(byId.values());
+            });
+          }
         }
-        const items = Array.isArray(data.items) ? data.items : [];
-        if (items.length === 0) {
-          // não sobrescreve dados locais quando backend está vazio
-          return;
+        // Tentar carregar também do Supabase (rf_receipts minimal) e mesclar
+        try {
+          const minis = await ReceiptsMinimalService.list();
+          if (Array.isArray(minis) && minis.length > 0) {
+            const mappedMinis: Recibo[] = minis.map((m: any) => ({
+              id: m.id,
+              numero: typeof m.numero === 'number' ? `RB-${String(m.numero).padStart(3, '0')}` : (m.numero || m.id),
+              cliente: '—',
+              valor: 0,
+              dataEmissao: (m.emitido_em || m.created_at || '').slice(0, 10),
+              status: 'emitido',
+              descricao: '',
+              formaPagamento: 'PIX',
+              useLogo: false,
+              logoDataUrl: undefined,
+              cpf: undefined,
+              signatureId: m.signature_id || undefined,
+              signatureDataUrl: undefined,
+              issuerName: undefined,
+              issuerDocumento: undefined,
+            }));
+            setRecibos((prev) => {
+              const byId = new Map(prev.map((p) => [p.id, p]));
+              mappedMinis.forEach((m) => byId.set(m.id, m));
+              return Array.from(byId.values());
+            });
+          }
+        } catch (e) {
+          // ignora falhas do Supabase e mantém local
         }
-        const mapped: Recibo[] = items.map((it: any) => {
-          const numeroStr = typeof it.numero === 'number' ? `RB-${String(it.numero).padStart(3,'0')}` : (it.numero || 'RB-—');
-          const dateStr: string = (it.emitido_em || it.created_at || '').slice(0,10);
-          return {
-            id: it.id,
-            numero: numeroStr,
-            cliente: '—',
-            valor: 0,
-            dataEmissao: dateStr,
-            status: 'emitido',
-            descricao: '',
-            formaPagamento: 'PIX',
-            useLogo: false,
-            logoDataUrl: undefined,
-            cpf: undefined,
-            signatureId: it.signature_id || undefined,
-            signatureDataUrl: undefined,
-            issuerName: it.issuer_name || undefined,
-            issuerDocumento: it.issuer_document || undefined,
-          } as Recibo;
-        });
-        // Mescla com dados locais existentes para não perder itens criados offline
-        setRecibos((prev) => {
-          const byId = new Map(prev.map((p) => [p.id, p]));
-          mapped.forEach((m) => byId.set(m.id, m));
-          return Array.from(byId.values());
-        });
       } catch (err) {
         console.warn('Falha ao carregar recibos do backend:', err);
         // mantém dados locais
       }
     };
     load();
-  }, []);
+  }, [loadedLocal]);
 
   // Prefill de recibo ao navegar a partir de Contratos
   useEffect(() => {
@@ -332,6 +395,8 @@ const Recibos: React.FC = () => {
         cliente: p.cliente || prev.cliente || '',
         cpf: p.documento || prev.cpf || '',
         signatureDataUrl: p.signatureUrl || prev.signatureDataUrl || defaultSignatureUrl || undefined,
+        signatureId: p.signatureId || prev.signatureId,
+        contractId: p.contractId || prev.contractId,
         useLogo: typeof p.useLogo === 'boolean' ? p.useLogo : (prev.useLogo ?? !!defaultLogoUrl),
         logoDataUrl: p.logoUrl || prev.logoDataUrl,
         descricao: p.descricao || prev.descricao,
@@ -437,26 +502,42 @@ const Recibos: React.FC = () => {
       signatureDataUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
       issuerName: novoEmitirOutro ? ((novoRecibo.issuerName || '').trim() || undefined) : undefined,
       issuerDocumento: novoEmitirOutro ? ((novoRecibo.issuerDocumento || '').trim() || undefined) : undefined,
+      contractId: novoRecibo.contractId,
     };
 
-    // Persistência no backend (assíncrona, com fallback silencioso)
+    // Persistência no Supabase (rf_receipts) prioritária para evitar duplicados
+    let supaSaved: { id: string; numero?: number | null; emitido_em?: string | null; created_at?: string | null } | null = null;
     try {
-      const payload = {
-        income_id: null,
-        pdf_url: null,
-        hash: null,
-        signature_id: novo.signatureId ?? null,
-        issuer_name: novo.issuerName ?? null,
-        issuer_document: novo.issuerDocumento ?? null,
-      };
-      const { data, error } = await receiptsApi.create(payload);
-      if (!error && data) {
-        // Atualiza ID e número pela fonte de verdade do backend
-        const backendNumero = typeof data.numero === 'number' ? `RB-${String(data.numero).padStart(3, '0')}` : novo.numero;
-        novo = { ...novo, id: data.id, numero: backendNumero };
+      const saved = await ReceiptsMinimalService.create({ signature_id: novo.signatureId ?? null, contract_id: novo.contractId ?? null });
+      if (saved) {
+        supaSaved = saved as any;
+        const supaNumero = typeof saved.numero === 'number' ? `RB-${String(saved.numero).padStart(3, '0')}` : novo.numero;
+        const supaData = (saved.emitido_em || saved.created_at || novo.dataEmissao || '').slice(0, 10);
+        novo = { ...novo, id: saved.id, numero: supaNumero, dataEmissao: supaData };
       }
     } catch (err) {
-      console.warn('Falha ao persistir recibo no backend. Mantendo item local.', err);
+      console.warn('Falha ao persistir recibo no Supabase. Tentando backend como fallback.', err);
+    }
+
+    // Fallback: backend (apenas se não salvou no Supabase)
+    if (!supaSaved) {
+      try {
+        const payload = {
+          income_id: null,
+          pdf_url: null,
+          hash: null,
+          signature_id: novo.signatureId ?? null,
+          issuer_name: novo.issuerName ?? null,
+          issuer_document: novo.issuerDocumento ?? null,
+        };
+        const { data, error } = await receiptsApi.create(payload);
+        if (!error && data) {
+          const backendNumero = typeof data.numero === 'number' ? `RB-${String(data.numero).padStart(3, '0')}` : novo.numero;
+          novo = { ...novo, id: data.id, numero: backendNumero };
+        }
+      } catch (err) {
+        console.warn('Falha ao persistir recibo no backend. Mantendo item local.', err);
+      }
     }
 
     setRecibos(prev => [novo, ...prev]);

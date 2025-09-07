@@ -23,6 +23,7 @@ import {
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { SignatureService } from '../services/signatureService';
+import { ContractsService } from '../services/contractsService';
 
 type ClausulaItem = { id: string; label: string; conteudo: string };
 type Clausula = { id: string; titulo: string; conteudo: string; itens?: ClausulaItem[] };
@@ -44,6 +45,8 @@ interface Contrato {
   clausulas?: Clausula[];
   issuerName?: string; // Emitir em nome de outra pessoa
   issuerDocumento?: string; // Documento do emissor alternativo
+  recurrenceEnabled?: boolean; // recebimento recorrente
+  recurrenceDay?: number; // dia do recebimento (1-28)
 }
 
 const _mockContratos: Contrato[] = [
@@ -116,6 +119,7 @@ const Contratos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [loadedLocal, setLoadedLocal] = useState(false);
 
   // Persistência local simples (localStorage)
   useEffect(() => {
@@ -123,6 +127,7 @@ const Contratos: React.FC = () => {
       const saved = localStorage.getItem('contratos');
       if (saved) setContratos(JSON.parse(saved));
     } catch {}
+    setLoadedLocal(true);
   }, []);
 
   useEffect(() => {
@@ -130,6 +135,46 @@ const Contratos: React.FC = () => {
       localStorage.setItem('contratos', JSON.stringify(contratos));
     } catch {}
   }, [contratos]);
+
+  // Carregar contratos do Supabase (server-side) após carregar local
+  useEffect(() => {
+    if (!loadedLocal) return;
+    const loadRemote = async () => {
+      try {
+        const list = await ContractsService.list();
+        if (Array.isArray(list) && list.length > 0) {
+          const mapped: Contrato[] = list.map((c) => ({
+            id: c.id,
+            numero: c.numero || `CONT-${c.id.slice(0, 6).toUpperCase()}`,
+            cliente: c.cliente || 'Cliente',
+            valor: Number(c.valor || 0),
+            dataInicio: c.dataInicio || '',
+            dataFim: c.dataFim || '',
+            status: (c.status as Contrato['status']) || 'ativo',
+            tipo: c.tipo || 'Outros',
+            descricao: c.descricao || '',
+            documento: c.documento || '',
+            signatureId: c.signatureId || undefined,
+            signatureUrl: undefined,
+            objeto: undefined,
+            clausulas: undefined,
+            issuerName: c.issuerName || undefined,
+            issuerDocumento: c.issuerDocumento || undefined,
+            recurrenceEnabled: !!c.recurrenceEnabled,
+            recurrenceDay: c.recurrenceDay || undefined,
+          }));
+          setContratos(prev => {
+            const byId = new Map(prev.map(p => [p.id, p]));
+            mapped.forEach(m => byId.set(m.id, { ...byId.get(m.id), ...m }));
+            return Array.from(byId.values());
+          });
+        }
+      } catch (e) {
+        console.warn('Falha ao carregar contratos do Supabase (mantendo local):', e);
+      }
+    };
+    loadRemote();
+  }, [loadedLocal]);
   const [showNovoContrato, setShowNovoContrato] = useState(false);
   const [novoContrato, setNovoContrato] = useState<Partial<Contrato>>({
     numero: '',
@@ -141,7 +186,9 @@ const Contratos: React.FC = () => {
     tipo: 'Aluguel',
     descricao: '',
     documento: '',
-    signatureUrl: undefined
+    signatureUrl: undefined,
+    recurrenceEnabled: false,
+    recurrenceDay: undefined
   });
   const [showViewContrato, setShowViewContrato] = useState(false);
   const [contratoSelecionado, setContratoSelecionado] = useState<Contrato | null>(null);
@@ -318,27 +365,71 @@ const Contratos: React.FC = () => {
       }
     }
 
-    const novo: Contrato = {
-      id,
-      numero,
-      cliente,
-      valor,
-      dataInicio: inicioISO,
-      dataFim: fimISO,
-      status: (novoContrato.status as Contrato['status']) || 'ativo',
-      tipo: novoContrato.tipo || 'Aluguel',
-      descricao: novoContrato.descricao || '',
-      documento: doc,
-      signatureId: novoUseSignature ? resolvedSignatureId : undefined,
-      signatureUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
-      objeto: novoObjeto || undefined,
-      clausulas: novoClausulas.length ? novoClausulas : undefined,
-      issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
-      issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined
-    };
-    setContratos(prev => [novo, ...prev]);
+    // Persistir no Supabase
+    try {
+      const created = await ContractsService.create({
+        numero,
+        cliente,
+        documento: doc,
+        valor,
+        dataInicio: inicioISO || undefined,
+        dataFim: fimISO || undefined,
+        status: (novoContrato.status as Contrato['status']) || 'ativo',
+        tipo: novoContrato.tipo || 'Aluguel',
+        descricao: novoContrato.descricao || '',
+        signatureId: novoUseSignature ? resolvedSignatureId : undefined,
+        issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
+        issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined,
+        recurrenceEnabled: !!novoContrato.recurrenceEnabled,
+        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
+      });
+      const novo: Contrato = {
+        id: created.id,
+        numero: created.numero || numero,
+        cliente: created.cliente || cliente,
+        valor: Number(created.valor || valor),
+        dataInicio: created.dataInicio || inicioISO,
+        dataFim: created.dataFim || fimISO,
+        status: (created.status as Contrato['status']) || ((novoContrato.status as Contrato['status']) || 'ativo'),
+        tipo: created.tipo || (novoContrato.tipo || 'Aluguel'),
+        descricao: created.descricao || (novoContrato.descricao || ''),
+        documento: created.documento || doc,
+        signatureId: created.signatureId || (novoUseSignature ? resolvedSignatureId : undefined),
+        signatureUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
+        objeto: novoObjeto || undefined,
+        clausulas: novoClausulas.length ? novoClausulas : undefined,
+        issuerName: created.issuerName || (novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined),
+        issuerDocumento: created.issuerDocumento || (novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined),
+        recurrenceEnabled: !!created.recurrenceEnabled,
+        recurrenceDay: created.recurrenceDay || ((typeof novoContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, novoContrato.recurrenceDay as number)) : undefined)
+      };
+      setContratos(prev => [novo, ...prev]);
+    } catch (err) {
+      console.warn('Falha ao persistir contrato no Supabase. Mantendo local.', err);
+      const novo: Contrato = {
+        id,
+        numero,
+        cliente,
+        valor,
+        dataInicio: inicioISO,
+        dataFim: fimISO,
+        status: (novoContrato.status as Contrato['status']) || 'ativo',
+        tipo: novoContrato.tipo || 'Aluguel',
+        descricao: novoContrato.descricao || '',
+        documento: doc,
+        signatureId: novoUseSignature ? resolvedSignatureId : undefined,
+        signatureUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
+        objeto: novoObjeto || undefined,
+        clausulas: novoClausulas.length ? novoClausulas : undefined,
+        issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
+        issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined,
+        recurrenceEnabled: !!novoContrato.recurrenceEnabled,
+        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
+      };
+      setContratos(prev => [novo, ...prev]);
+    }
     setShowNovoContrato(false);
-    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined });
+    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined, recurrenceEnabled: false, recurrenceDay: undefined });
     setNovoValorInput('');
     setNovoObjeto('');
     setNovoClausulas([]);
@@ -357,6 +448,8 @@ const Contratos: React.FC = () => {
           cliente: contrato.cliente,
           documento: contrato.documento,
           signatureUrl: contrato.signatureUrl,
+          signatureId: contrato.signatureId,
+          contractId: contrato.id,
           descricao: `Contrato ${contrato.numero}`,
           useLogo: true,
         }
@@ -478,23 +571,64 @@ const Contratos: React.FC = () => {
       }
     }
 
-    setContratos(prev => prev.map(c => c.id === contratoSelecionado.id ? {
-      ...c,
-      numero: (editContrato.numero || c.numero)!,
-      cliente: (editContrato.cliente || c.cliente)!,
-      valor: isNaN(novoValor) ? c.valor : novoValor,
-      dataInicio: (editContrato.dataInicio || c.dataInicio)!,
-      dataFim: (editContrato.dataFim || c.dataFim)!,
-      status: (editContrato.status as Contrato['status']) || c.status,
-      tipo: editContrato.tipo || c.tipo,
-      descricao: editContrato.descricao ?? c.descricao,
-      signatureId: editUseSignature ? (resolvedSignatureId ?? undefined) : undefined,
-      signatureUrl: editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined,
-      objeto: editObjeto || undefined,
-      clausulas: editClausulas.length ? editClausulas : undefined,
-      issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined,
-      issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined
-    } : c));
+    try {
+      const updated = await ContractsService.update(contratoSelecionado.id, {
+        numero: editContrato.numero || contratoSelecionado.numero,
+        cliente: editContrato.cliente || contratoSelecionado.cliente,
+        documento: editContrato.documento || contratoSelecionado.documento,
+        valor: isNaN(novoValor) ? contratoSelecionado.valor : novoValor,
+        dataInicio: editContrato.dataInicio || contratoSelecionado.dataInicio,
+        dataFim: editContrato.dataFim || contratoSelecionado.dataFim,
+        status: (editContrato.status as Contrato['status']) || contratoSelecionado.status,
+        tipo: editContrato.tipo || contratoSelecionado.tipo,
+        descricao: editContrato.descricao ?? contratoSelecionado.descricao,
+        signatureId: editUseSignature ? (resolvedSignatureId ?? undefined) : undefined,
+        issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || contratoSelecionado.issuerName) : undefined,
+        issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || contratoSelecionado.issuerDocumento) : undefined,
+        recurrenceEnabled: !!editContrato.recurrenceEnabled,
+        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, editContrato.recurrenceDay as number)) : contratoSelecionado.recurrenceDay
+      });
+      setContratos(prev => prev.map(c => c.id === contratoSelecionado.id ? {
+        ...c,
+        numero: updated.numero || c.numero,
+        cliente: updated.cliente || c.cliente,
+        valor: Number(updated.valor || c.valor),
+        dataInicio: updated.dataInicio || c.dataInicio,
+        dataFim: updated.dataFim || c.dataFim,
+        status: (updated.status as Contrato['status']) || c.status,
+        tipo: updated.tipo || c.tipo,
+        descricao: updated.descricao ?? c.descricao,
+        signatureId: updated.signatureId || (editUseSignature ? (resolvedSignatureId ?? undefined) : undefined),
+        signatureUrl: editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined,
+        objeto: editObjeto || undefined,
+        clausulas: editClausulas.length ? editClausulas : undefined,
+        issuerName: updated.issuerName || ((editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined),
+        issuerDocumento: updated.issuerDocumento || ((editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined),
+        recurrenceEnabled: !!updated.recurrenceEnabled,
+        recurrenceDay: updated.recurrenceDay || ((typeof editContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay)
+      } : c));
+    } catch (err) {
+      console.warn('Falha ao atualizar contrato no Supabase. Atualizando local.', err);
+      setContratos(prev => prev.map(c => c.id === contratoSelecionado.id ? {
+        ...c,
+        numero: (editContrato.numero || c.numero)!,
+        cliente: (editContrato.cliente || c.cliente)!,
+        valor: isNaN(novoValor) ? c.valor : novoValor,
+        dataInicio: (editContrato.dataInicio || c.dataInicio)!,
+        dataFim: (editContrato.dataFim || c.dataFim)!,
+        status: (editContrato.status as Contrato['status']) || c.status,
+        tipo: editContrato.tipo || c.tipo,
+        descricao: editContrato.descricao ?? c.descricao,
+        signatureId: editUseSignature ? (resolvedSignatureId ?? undefined) : undefined,
+        signatureUrl: editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined,
+        objeto: editObjeto || undefined,
+        clausulas: editClausulas.length ? editClausulas : undefined,
+        issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined,
+        issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined,
+        recurrenceEnabled: !!editContrato.recurrenceEnabled,
+        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay
+      } : c));
+    }
     setShowEditContrato(false);
     setContratoSelecionado(null);
     setEditContrato({});
@@ -692,6 +826,36 @@ const Contratos: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Término</label>
                   <input type="date" value={novoContrato.dataFim || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, dataFim: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
+              </div>
+              {/* Recorrência */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={!!novoContrato.recurrenceEnabled}
+                    onChange={(e) => setNovoContrato(prev => ({ ...prev, recurrenceEnabled: e.target.checked }))}
+                  />
+                  Recebimento recorrente
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia do recebimento (1–28)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={28}
+                      value={Number.isFinite(Number(novoContrato.recurrenceDay)) ? (novoContrato.recurrenceDay as number) : ''}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value || '0', 10);
+                        setNovoContrato(prev => ({ ...prev, recurrenceDay: isNaN(n) ? undefined : Math.min(28, Math.max(1, n)) }));
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={!novoContrato.recurrenceEnabled}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Quando ativo, geraremos automaticamente um recibo 10 dias antes do dia informado.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
@@ -906,6 +1070,36 @@ const Contratos: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Término</label>
                   <input type="date" value={editContrato.dataFim || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, dataFim: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
+              </div>
+              {/* Recorrência (edição) */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={!!editContrato.recurrenceEnabled}
+                    onChange={(e) => setEditContrato(prev => ({ ...prev, recurrenceEnabled: e.target.checked }))}
+                  />
+                  Recebimento recorrente
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia do recebimento (1–28)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={28}
+                      value={Number.isFinite(Number(editContrato.recurrenceDay)) ? (editContrato.recurrenceDay as number) : ''}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value || '0', 10);
+                        setEditContrato(prev => ({ ...prev, recurrenceDay: isNaN(n) ? undefined : Math.min(28, Math.max(1, n)) }));
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={!editContrato.recurrenceEnabled}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Geraremos automaticamente um recibo 10 dias antes do dia informado (quando ativo).</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
