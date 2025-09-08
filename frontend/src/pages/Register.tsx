@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import { cn } from '../lib/utils';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import Captcha from '../components/Captcha';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -24,6 +25,7 @@ const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -283,10 +285,15 @@ const Register: React.FC = () => {
                 </label>
               </div>
 
+              {/* Captcha */}
+              <div className="pt-2">
+                <Captcha onVerify={setCaptchaToken} onError={() => setError('Falha na verificação de segurança. Tente novamente.')} />
+              </div>
+
               {/* Submit Button */}
               <Button
                  type="submit"
-                 disabled={isLoading}
+                 disabled={isLoading || !captchaToken}
                  className="w-full py-4 text-base font-semibold"
                  size="lg"
                >

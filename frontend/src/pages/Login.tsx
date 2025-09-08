@@ -9,6 +9,7 @@ import { Eye, EyeOff, Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import Captcha from '../components/Captcha';
 
 // Mapeia mensagens de erro do Supabase para mensagens amigáveis
 const mapSupabaseAuthError = (error: unknown): string => {
@@ -38,6 +39,8 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   const { signIn, resendEmailConfirmation, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -51,7 +54,12 @@ const Login: React.FC = () => {
       const { data, error } = await signIn(email, password);
       
       if (error) {
-        setError(mapSupabaseAuthError(error));
+        if (error.message.includes('email not confirmed')) {
+          setUnverifiedEmail(email);
+          setError('Seu e-mail não foi confirmado. Verifique sua caixa de entrada.');
+        } else {
+          setError(mapSupabaseAuthError(error));
+        }
       } else if (data?.session) {
         navigate('/dashboard');
       }
@@ -166,6 +174,20 @@ const Login: React.FC = () => {
                   </button>
                 </div>
               )}
+              {unverifiedEmail && (
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await resendEmailConfirmation(unverifiedEmail);
+                      alert('E-mail de confirmação reenviado! Verifique sua caixa de entrada.');
+                    }}
+                    className="text-blue-600 hover:underline"
+                  >
+                    Reenviar e-mail de confirmação
+                  </button>
+                </div>
+              )}
 
               {/* Remember me and Forgot password */}
               <div className="flex items-center justify-between pt-2">
@@ -191,13 +213,18 @@ const Login: React.FC = () => {
                 </div>
               </div>
 
+              {/* Captcha */}
+              <div className="pt-2">
+                <Captcha onVerify={setCaptchaToken} onError={() => setError('Falha na verificação de segurança. Tente novamente.')} />
+              </div>
+
               {/* Submit Button */}
               <Button
                 type="submit"
                 variant="primary"
                 size="lg"
                 className="w-full"
-                disabled={isLoading}
+                disabled={isLoading || !captchaToken}
                 loading={isLoading}
               >
                 {!isLoading && <LogIn className="w-4 h-4 mr-2" />}

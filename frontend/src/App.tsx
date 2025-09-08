@@ -13,6 +13,8 @@ import PWANotification from './components/PWANotification';
 import GlobalLoader from './components/GlobalLoader';
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Contratos = lazy(() => import('./pages/Contratos'));
 const Recibos = lazy(() => import('./pages/Recibos'));
@@ -31,6 +33,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/design-system-test" element={<DesignSystemTest />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Rotas protegidas */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
