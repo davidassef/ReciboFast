@@ -23,6 +23,12 @@ export default function Captcha({ onVerify, onError, theme = 'dark', size = 'com
       const host = typeof window !== 'undefined' ? window.location.hostname : '';
       const envKey = (import.meta as any)?.env?.VITE_HCAPTCHA_SITE_KEY as string | undefined;
       const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      // Logs de depuração (não sensíveis) para identificar problemas de env em produção
+      try {
+        const masked = envKey ? `${envKey.slice(0, 4)}...${envKey.slice(-4)}` : '(vazio)';
+        // eslint-disable-next-line no-console
+        console.info('[Captcha][debug] host=', host, ' isLocal=', isLocal, ' VITE_HCAPTCHA_SITE_KEY=', masked);
+      } catch {}
       if (isLocal) {
         // Chave de teste (sempre válida no localhost)
         return '10000000-ffff-ffff-ffff-000000000001';
