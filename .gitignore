@@ -220,3 +220,6 @@ docker-compose.override.yml
 # Arquivos de cobertura
 coverage.out
 coverage.html
+
+# Permitir exemplo de env no frontend
+!frontend/.env.example

@@ -13,6 +13,9 @@ RUN npm ci
 
 # Copia código e constrói para produção
 COPY . .
+# Suporte à variável de ambiente do hCaptcha durante o build (consumida pelo Vite)
+ARG VITE_HCAPTCHA_SITE_KEY
+ENV VITE_HCAPTCHA_SITE_KEY=$VITE_HCAPTCHA_SITE_KEY
 RUN npm run build
 
 # Stage de runtime (NGINX)
