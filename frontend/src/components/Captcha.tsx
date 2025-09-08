@@ -5,6 +5,7 @@
 
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useMemo, useRef, useState } from 'react';
+import { HCAPTCHA_SITE_KEY } from '../config/env';
 
 interface CaptchaProps {
   onVerify: (token: string) => void;
@@ -21,7 +22,7 @@ export default function Captcha({ onVerify, onError, theme = 'dark', size = 'com
   const siteKey = useMemo(() => {
     try {
       const host = typeof window !== 'undefined' ? window.location.hostname : '';
-      const envKey = (import.meta as any)?.env?.VITE_HCAPTCHA_SITE_KEY as string | undefined;
+      const envKey = HCAPTCHA_SITE_KEY as string | undefined;
       const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
       // Logs de depuração (não sensíveis) para identificar problemas de env em produção
       try {
