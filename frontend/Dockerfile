@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Dockerfile multi-stage para o frontend ReciboFast (Vite). Build com Node 20 e runtime NGINX com SPA fallback.
-# Data: 07-09-2025
+# Data: 08-09-2025
 
 # Stage de build (Node LTS)
 FROM node:20-alpine AS builder
