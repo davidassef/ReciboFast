@@ -30,6 +30,23 @@ func main() {
         _, _ = w.Write([]byte("ok"))
     })
 
+    // Retorna a sitekey pública do hCaptcha para uso no frontend (não sensível)
+    mux.HandleFunc("/api/v1/captcha/sitekey", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        if r.Method != http.MethodGet {
+            w.WriteHeader(http.StatusMethodNotAllowed)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "Método não permitido"})
+            return
+        }
+        sitekey := strings.TrimSpace(os.Getenv("HCAPTCHA_SITE_KEY"))
+        if sitekey == "" {
+            // Não é erro fatal; apenas informa vazio para o cliente decidir fallback
+            _ = json.NewEncoder(w).Encode(map[string]any{"sitekey": ""})
+            return
+        }
+        _ = json.NewEncoder(w).Encode(map[string]any{"sitekey": sitekey})
+    })
+
     // Verificação server-side do hCaptcha
     mux.HandleFunc("/api/v1/captcha/verify", func(w http.ResponseWriter, r *http.Request) {
         w.Header().Set("Content-Type", "application/json")

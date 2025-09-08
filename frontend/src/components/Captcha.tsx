@@ -4,7 +4,7 @@
 // MIT License
 
 import HCaptcha from '@hcaptcha/react-hcaptcha';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HCAPTCHA_SITE_KEY } from '../config/env';
 
 interface CaptchaProps {
@@ -19,26 +19,47 @@ export default function Captcha({ onVerify, onError, theme = 'dark', size = 'com
   const [localError, setLocalError] = useState<string | null>(null);
 
   // Fallback automático: em localhost usa a sitekey de teste oficial da hCaptcha
-  const siteKey = useMemo(() => {
+  const [siteKey, setSiteKey] = useState<string>('');
+  const { host, envKey, isLocal } = useMemo(() => {
+    const h = typeof window !== 'undefined' ? window.location.hostname : '';
+    const k = HCAPTCHA_SITE_KEY as string | undefined;
+    const local = h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local');
+    // Logs de depuração (não sensíveis) para identificar problemas de env em produção
     try {
-      const host = typeof window !== 'undefined' ? window.location.hostname : '';
-      const envKey = HCAPTCHA_SITE_KEY as string | undefined;
-      const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
-      // Logs de depuração (não sensíveis) para identificar problemas de env em produção
-      try {
-        const masked = envKey ? `${envKey.slice(0, 4)}...${envKey.slice(-4)}` : '(vazio)';
-        // eslint-disable-next-line no-console
-        console.info('[Captcha][debug] host=', host, ' isLocal=', isLocal, ' VITE_HCAPTCHA_SITE_KEY=', masked);
-      } catch {}
-      if (isLocal) {
-        // Chave de teste (sempre válida no localhost)
-        return '10000000-ffff-ffff-ffff-000000000001';
-      }
-      return envKey || '';
-    } catch {
-      return '';
-    }
+      const masked = k ? `${k.slice(0, 4)}...${k.slice(-4)}` : '(vazio)';
+      // eslint-disable-next-line no-console
+      console.info('[Captcha][debug] host=', h, ' isLocal=', local, ' VITE_HCAPTCHA_SITE_KEY=', masked);
+    } catch {}
+    return { host: h, envKey: k, isLocal: local };
   }, []);
+
+  useEffect(() => {
+    // Define a sitekey de acordo com o ambiente
+    if (isLocal) {
+      setSiteKey('10000000-ffff-ffff-ffff-000000000001');
+      return;
+    }
+    if (envKey && envKey.trim() !== '') {
+      setSiteKey(envKey);
+      return;
+    }
+    // Fallback em runtime: busca a sitekey pública no backend
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/captcha/sitekey');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const key = (json?.sitekey || '').toString();
+        const masked = key ? `${key.slice(0, 4)}...${key.slice(-4)}` : '(vazio)';
+        // eslint-disable-next-line no-console
+        console.info('[Captcha][debug] sitekey(runtime)=', masked);
+        setSiteKey(key);
+      } catch (e) {
+        console.warn('[Captcha][debug] falha ao obter sitekey em runtime:', e);
+        setSiteKey('');
+      }
+    })();
+  }, [envKey, isLocal]);
 
   const handleError = (err: any) => {
     const msg = 'Falha na verificação de segurança. Tente novamente.';
