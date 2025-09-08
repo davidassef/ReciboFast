@@ -9,6 +9,7 @@ import { Lock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import Captcha from '../components/Captcha';
+import { verifyCaptcha } from '../services/captcha';
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -41,6 +42,13 @@ const ResetPassword: React.FC = () => {
 
     setIsLoading(true);
     try {
+      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
+      if (!ok) {
+        setError(captchaError || 'Falha na verificação de segurança.');
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await updatePassword(password);
       if (error) {
         setError(error.message || 'Não foi possível redefinir sua senha. O link pode ter expirado.');

@@ -6,9 +6,12 @@
 package main
 
 import (
+    "bytes"
     "encoding/json"
+    "io"
     "log"
     "net/http"
+    "net/url"
     "os"
     "strings"
 
@@ -25,6 +28,76 @@ func main() {
     mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusOK)
         _, _ = w.Write([]byte("ok"))
+    })
+
+    // Verificação server-side do hCaptcha
+    mux.HandleFunc("/api/v1/captcha/verify", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        if r.Method != http.MethodPost {
+            w.WriteHeader(http.StatusMethodNotAllowed)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "Método não permitido"})
+            return
+        }
+
+        secret := os.Getenv("HCAPTCHA_SECRET")
+        if strings.TrimSpace(secret) == "" {
+            // Segurança: sem secret configurado, não valida (retorna erro explícito)
+            w.WriteHeader(http.StatusInternalServerError)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "HCAPTCHA_SECRET não configurado no servidor"})
+            return
+        }
+
+        var payload struct {
+            Token   string `json:"token"`
+            SiteKey string `json:"sitekey,omitempty"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "JSON inválido"})
+            return
+        }
+        if strings.TrimSpace(payload.Token) == "" {
+            w.WriteHeader(http.StatusBadRequest)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "token é obrigatório"})
+            return
+        }
+
+        form := url.Values{}
+        form.Set("secret", secret)
+        form.Set("response", payload.Token)
+        if payload.SiteKey != "" {
+            form.Set("sitekey", payload.SiteKey)
+        }
+        if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
+            form.Set("remoteip", strings.Split(ip, ",")[0])
+        }
+
+        resp, err := http.Post(
+            "https://hcaptcha.com/siteverify",
+            "application/x-www-form-urlencoded",
+            bytes.NewBufferString(form.Encode()),
+        )
+        if err != nil {
+            log.Printf("erro ao verificar hcaptcha: %v", err)
+            w.WriteHeader(http.StatusBadGateway)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "Falha ao contatar serviço hCaptcha"})
+            return
+        }
+        defer resp.Body.Close()
+
+        body, _ := io.ReadAll(resp.Body)
+        // Resposta esperada do hCaptcha
+        // { "success": true|false, "challenge_ts": "...", "hostname": "...", "error-codes": [ ... ] }
+        var verify map[string]any
+        if err := json.Unmarshal(body, &verify); err != nil {
+            w.WriteHeader(http.StatusBadGateway)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "Resposta inválida do hCaptcha"})
+            return
+        }
+
+        // Repassa a resposta ao cliente
+        w.WriteHeader(http.StatusOK)
+        _ = json.NewEncoder(w).Encode(verify)
     })
 
     // Stubs mínimos da API v1 para ambiente de desenvolvimento

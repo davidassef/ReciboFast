@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de login do usuário
-// Data: 05-09-2025
+// Data: 08-09-2025
 // MIT License
 
 import React, { useState } from 'react';
@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 import Captcha from '../components/Captcha';
+import { verifyCaptcha } from '../services/captcha';
 
 // Mapeia mensagens de erro do Supabase para mensagens amigáveis
 const mapSupabaseAuthError = (error: unknown): string => {
@@ -51,10 +52,23 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Verificação do hCaptcha (server-side em produção, no serviço abstrai localhost)
+      if (!captchaToken) {
+        setError('Confirme que você é humano.');
+        setIsLoading(false);
+        return;
+      }
+      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
+      if (!ok) {
+        setError(captchaError || 'Falha na verificação de segurança.');
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await signIn(email, password);
       
       if (error) {
-        if (error.message.includes('email not confirmed')) {
+        if ((error as any).message?.includes('email not confirmed')) {
           setUnverifiedEmail(email);
           setError('Seu e-mail não foi confirmado. Verifique sua caixa de entrada.');
         } else {

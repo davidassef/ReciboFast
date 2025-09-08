@@ -43,14 +43,20 @@ export default function Captcha({ onVerify, onError, theme = 'dark', size = 'com
 
   return (
     <div className="my-4">
-      <HCaptcha
-        ref={captchaRef}
-        sitekey={siteKey}
-        onVerify={onVerify}
-        onError={handleError}
-        theme={theme}
-        size={size}
-      />
+      {siteKey ? (
+        <HCaptcha
+          ref={captchaRef}
+          sitekey={siteKey}
+          onVerify={onVerify}
+          onError={handleError}
+          theme={theme}
+          size={size}
+        />
+      ) : (
+        <div className="text-sm text-warning-700 bg-warning-50 border border-warning-200 rounded-lg p-3">
+          hCaptcha não configurado para este ambiente. Defina a variável VITE_HCAPTCHA_SITE_KEY no ambiente de build.
+        </div>
+      )}
       <p className="text-xs text-neutral-500 mt-2">
         Protegido por hCaptcha —
         <a href="https://hcaptcha.com/privacy" target="_blank" rel="noreferrer" className="underline ml-1">
@@ -59,9 +65,6 @@ export default function Captcha({ onVerify, onError, theme = 'dark', size = 'com
       </p>
       {localError && (
         <p className="text-xs text-error-600 mt-1">{localError}</p>
-      )}
-      {(!siteKey || siteKey === '') && (
-        <p className="text-xs text-warning-700 mt-1">Chave do hCaptcha não configurada. Defina VITE_HCAPTCHA_SITE_KEY para produção.</p>
       )}
     </div>
   );

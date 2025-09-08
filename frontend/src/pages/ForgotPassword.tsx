@@ -9,6 +9,7 @@ import { Mail, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import Captcha from '../components/Captcha';
+import { verifyCaptcha } from '../services/captcha';
 
 const ForgotPassword: React.FC = () => {
   const { resetPassword } = useAuth();
@@ -35,6 +36,18 @@ const ForgotPassword: React.FC = () => {
 
     setIsLoading(true);
     try {
+      if (!captchaToken) {
+        setError('Confirme que você é humano.');
+        setIsLoading(false);
+        return;
+      }
+      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
+      if (!ok) {
+        setError(captchaError || 'Falha na verificação de segurança.');
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await resetPassword(email);
       if (error) {
         setError(error.message || 'Não foi possível enviar o e-mail de redefinição.');

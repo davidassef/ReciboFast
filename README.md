@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: README do projeto ReciboFast
-# Data: 07-09-2025
+# Data: 08-09-2025
 
 # 🧾 ReciboFast
 
@@ -119,6 +119,9 @@ DATABASE_URL=postgresql://postgres:senha@db.seu-projeto.supabase.co:5432/postgre
 PORT=8080
 ENVIRONMENT=development
 JWT_SECRET=seu-jwt-secret
+
+# hCaptcha (validação server-side)
+HCAPTCHA_SECRET=sua-chave-secreta-do-hcaptcha
 
 # CORS
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000

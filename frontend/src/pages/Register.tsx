@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de registro do usuário
-// Data: 04-09-2025
+// Data: 08-09-2025
 // MIT License
 
 import React, { useState } from 'react';
@@ -11,6 +11,10 @@ import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
 import { cn } from '../lib/utils';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 import Captcha from '../components/Captcha';
+import LegalModal from '../components/LegalModal';
+import Terms from './Terms';
+import Privacy from './Privacy';
+import { verifyCaptcha } from '../services/captcha';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -26,6 +30,8 @@ const Register: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +61,10 @@ const Register: React.FC = () => {
       setError('As senhas não coincidem');
       return false;
     }
+    if (!formData.terms) {
+      setError('É necessário aceitar os Termos de Uso e a Política de Privacidade.');
+      return false;
+    }
     return true;
   };
 
@@ -70,6 +80,19 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Verificação do hCaptcha (server-side em produção)
+      if (!captchaToken) {
+        setError('Confirme que você é humano.');
+        setIsLoading(false);
+        return;
+      }
+      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
+      if (!ok) {
+        setError(captchaError || 'Falha na verificação de segurança.');
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await signUp(
         formData.email,
         formData.password,
@@ -264,24 +287,26 @@ const Register: React.FC = () => {
                    type="checkbox"
                    required
                    checked={formData.terms}
-                   onChange={handleChange}
+                   onChange={(e) => setFormData(prev => ({ ...prev, terms: e.target.checked }))}
                    className="mt-1 h-5 w-5 text-primary-600 focus:ring-primary-500 focus:ring-2 border-neutral-300 rounded-md transition-all duration-200 hover:border-primary-400"
                  />
                 <label htmlFor="terms" className="text-sm text-neutral-700 leading-relaxed">
                   Eu concordo com os{' '}
-                  <Link 
-                    to="/terms" 
-                    className="text-primary-600 hover:text-primary-500 font-semibold transition-all duration-200 hover:underline decoration-2 underline-offset-2"
+                  <a 
+                    href="/terms" 
+                    onClick={(e) => { e.preventDefault(); setShowTerms(true); }}
+                    className="text-primary-600 hover:text-primary-500 font-semibold transition-all duration-200 hover:underline decoration-2 underline-offset-2 cursor-pointer"
                   >
                     Termos de Uso
-                  </Link>{' '}
+                  </a>{' '}
                   e{' '}
-                  <Link 
-                    to="/privacy" 
-                    className="text-primary-600 hover:text-primary-500 font-semibold transition-all duration-200 hover:underline decoration-2 underline-offset-2"
+                  <a 
+                    href="/privacy" 
+                    onClick={(e) => { e.preventDefault(); setShowPrivacy(true); }}
+                    className="text-primary-600 hover:text-primary-500 font-semibold transition-all duration-200 hover:underline decoration-2 underline-offset-2 cursor-pointer"
                   >
                     Política de Privacidade
-                  </Link>
+                  </a>
                 </label>
               </div>
 
@@ -337,6 +362,13 @@ const Register: React.FC = () => {
             </div>
           </CardBody>
         </Card>
+        {/* Modais de Termos e Privacidade */}
+        <LegalModal isOpen={showTerms} title="Termos de Uso" onClose={() => setShowTerms(false)}>
+          <Terms />
+        </LegalModal>
+        <LegalModal isOpen={showPrivacy} title="Política de Privacidade" onClose={() => setShowPrivacy(false)}>
+          <Privacy />
+        </LegalModal>
       </div>
     </div>
   );
