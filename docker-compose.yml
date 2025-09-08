@@ -1,7 +1,7 @@
 # MIT License
 # Autor atual: David Assef
 # Descrição: Compose de desenvolvimento do ReciboFast (backend e frontend)
-# Data: 03-09-2025
+# Data: 08-09-2025
 
 version: "3.9"
 services:
@@ -20,15 +20,13 @@ services:
     volumes:
       - ./supabase:/supabase  # Montar migrações para acesso, se necessário
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_HCAPTCHA_SITE_KEY: ${VITE_HCAPTCHA_SITE_KEY}
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "3000:80"  # NGINX expõe 80 no container
     depends_on:
       - backend
-    environment:
-      - REACT_APP_API_URL=http://backend:8080
 
 # Frontend e proxy reverso podem ser adicionados posteriormente.
