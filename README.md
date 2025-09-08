@@ -133,6 +133,22 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anonima
 # VITE_API_BASE_URL=/api/v1
 ```
 
+### Configuração da Chave hCaptcha
+
+Para integrar o hCaptcha no frontend, configure a variável `VITE_HCAPTCHA_SITE_KEY` de forma segura. Esta chave é usada para validar interações humanas e deve ser mantida em segredo. Evite commitar chaves reais; use variáveis de ambiente.
+
+- **Em Desenvolvimento Local**: O componente Captcha no frontend usa automaticamente a sitekey de teste oficial da hCaptcha quando rodando em `localhost` ou `127.0.0.1`. Não é necessário configurar manualmente.
+- **Em Produção ou Build**:
+  - **Docker**: Passe a variável como argumento de build e defina como ambiente. Exemplo:
+    ```bash
+    docker build --build-arg VITE_HCAPTCHA_SITE_KEY=SEU_SITE_KEY -t recibofast-frontend ./frontend
+    ```
+    No Dockerfile, o ARG e ENV já estão configurados para consumir esta variável.
+  - **Vercel**: Vá para Settings > Environment Variables e adicione `VITE_HCAPTCHA_SITE_KEY` com o valor da sua chave. O Vite no build consumirá esta variável.
+  - **Netlify**: Vá para Site settings > Environment > Environment variables e adicione `VITE_HCAPTCHA_SITE_KEY`. Certifique-se de que o build command use `npm run build` para que o Vite incorpore a variável.
+
+**Atenção**: Sempre use chaves de produção válidas em ambientes de deploy. Para testes, utilize o fallback automático ou a sitekey de teste da hCaptcha.
+
 ### 4. Instalação das Dependências
 
 **Frontend:**
