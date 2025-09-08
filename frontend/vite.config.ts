@@ -11,6 +11,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Garante injeção explícita da variável em tempo de build (fallback para ambientes CI como Vercel)
+  define: {
+    'import.meta.env.VITE_HCAPTCHA_SITE_KEY': JSON.stringify(process.env.VITE_HCAPTCHA_SITE_KEY || ''),
+  },
   server: {
     proxy: {
       // Proxy para API em desenvolvimento: evita CORS
