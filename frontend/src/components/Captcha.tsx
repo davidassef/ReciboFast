@@ -12,9 +12,11 @@ interface CaptchaProps {
   onError?: (error: any) => void;
   theme?: 'light' | 'dark' | 'contrast';
   size?: 'normal' | 'compact' | 'invisible';
+  align?: 'left' | 'center' | 'right';
+  className?: string;
 }
 
-export default function Captcha({ onVerify, onError, theme = 'dark', size = 'compact' }: CaptchaProps) {
+export default function Captcha({ onVerify, onError, theme = 'light', size = 'compact', align = 'center', className }: CaptchaProps) {
   const captchaRef = useRef<HCaptcha>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -65,34 +67,54 @@ export default function Captcha({ onVerify, onError, theme = 'dark', size = 'com
     const msg = 'Falha na verificação de segurança. Tente novamente.';
     setLocalError(msg);
     onError?.(err);
+    // Se ocorrer erro, invalidamos o token no pai
+    try { onVerify(''); } catch {}
     // fallback de log não bloqueante
     console.error('[Captcha] erro:', err);
   };
 
+  const alignClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center';
+  const shellHeight = 44; // altura similar a botão
+  const scale = size === 'compact' ? 0.92 : 0.86; // ajuste visual
+
   return (
-    <div className="my-4">
+    <div className={`my-3 w-full flex ${alignClass} ${className || ''}`}>
       {siteKey ? (
-        <HCaptcha
-          ref={captchaRef}
-          sitekey={siteKey}
-          onVerify={onVerify}
-          onError={handleError}
-          theme={theme}
-          size={size}
-        />
+        <div
+          className="inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-white shadow-sm px-2 py-1 overflow-hidden"
+          style={{ height: shellHeight, transform: `scale(${scale})`, transformOrigin: 'center' }}
+        >
+          <HCaptcha
+            ref={captchaRef}
+            sitekey={siteKey}
+            onVerify={onVerify}
+            onError={handleError}
+            onExpire={() => {
+              try { onVerify(''); } catch {}
+            }}
+            onClose={() => {
+              try { onVerify(''); } catch {}
+            }}
+            theme={theme}
+            size={size}
+          />
+        </div>
       ) : (
         <div className="text-sm text-warning-700 bg-warning-50 border border-warning-200 rounded-lg p-3">
           hCaptcha não configurado para este ambiente. Defina a variável VITE_HCAPTCHA_SITE_KEY no ambiente de build.
         </div>
       )}
-      <p className="text-xs text-neutral-500 mt-2">
-        Protegido por hCaptcha —
-        <a href="https://hcaptcha.com/privacy" target="_blank" rel="noreferrer" className="underline ml-1">
-          Privacidade
-        </a>
-      </p>
+      {/* Rodapé informativo */}
+      <div className="w-full flex justify-center">
+        <p className="text-xs text-neutral-500 mt-2">
+          Protegido por hCaptcha —
+          <a href="https://hcaptcha.com/privacy" target="_blank" rel="noreferrer" className="underline ml-1">
+            Privacidade
+          </a>
+        </p>
+      </div>
       {localError && (
-        <p className="text-xs text-error-600 mt-1">{localError}</p>
+        <p className="text-xs text-error-600 mt-1 text-center">{localError}</p>
       )}
     </div>
   );

@@ -229,7 +229,14 @@ const Login: React.FC = () => {
 
               {/* Captcha */}
               <div className="pt-2">
-                <Captcha onVerify={setCaptchaToken} onError={() => setError('Falha na verificação de segurança. Tente novamente.')} />
+                <Captcha
+                  onVerify={setCaptchaToken}
+                  onError={() => setError('Falha na verificação de segurança. Tente novamente.')}
+                  size="compact"
+                  theme="light"
+                  align="center"
+                  className="mt-1"
+                />
               </div>
 
               {/* Submit Button */}
