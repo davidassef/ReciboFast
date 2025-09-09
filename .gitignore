@@ -223,4 +223,4 @@ coverage.html
 
 # Permitir exemplo de env no frontend
 !frontend/.env.example
-!backend/.env.example
+!backend/.env.example!frontend/public/manifest.webmanifest

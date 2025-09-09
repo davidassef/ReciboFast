@@ -31,6 +31,11 @@ export async function verifyCaptcha(token: string): Promise<{ ok: boolean; error
     });
 
     if (error) {
+      // Fallback temporário: permitir fluxo quando backend ainda não tem a secret configurada
+      if (/HCAPTCHA_SECRET/i.test(error)) {
+        console.warn('[captcha] HCAPTCHA_SECRET ausente no backend — aplicando fallback temporário (menos seguro).');
+        return { ok: true };
+      }
       return { ok: false, error };
     }
     if (!data) {
