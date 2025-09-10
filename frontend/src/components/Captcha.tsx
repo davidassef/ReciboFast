@@ -27,11 +27,14 @@ export default function Captcha({ onVerify, onError, theme = 'light', size = 'in
     const h = typeof window !== 'undefined' ? window.location.hostname : '';
     const k = HCAPTCHA_SITE_KEY as string | undefined;
     const local = h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local');
-    // Logs de depuração (não sensíveis) para identificar problemas de env em produção
+    // Logs de depuração apenas em ambiente de desenvolvimento
     try {
       const masked = k ? `${k.slice(0, 4)}...${k.slice(-4)}` : '(vazio)';
-      // eslint-disable-next-line no-console
-      console.info('[Captcha][debug] host=', h, ' isLocal=', local, ' VITE_HCAPTCHA_SITE_KEY=', masked);
+      const isDev = (import.meta as any)?.env?.DEV;
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.info('[Captcha][debug] host=', h, ' isLocal=', local, ' VITE_HCAPTCHA_SITE_KEY=', masked);
+      }
     } catch {}
     return { host: h, envKey: k, isLocal: local };
   }, []);
@@ -86,29 +89,32 @@ export default function Captcha({ onVerify, onError, theme = 'light', size = 'in
   };
 
   const alignClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center';
+  const isInvisible = size === 'invisible';
   return (
-    <div className={`my-3 w-full flex ${alignClass} ${className || ''}`}>
+    <div className={`${isInvisible ? '' : 'my-3'} w-full flex ${alignClass} ${className || ''}`}>
       {siteKey ? (
-        <HCaptcha
-          ref={captchaRef}
-          sitekey={siteKey}
-          onVerify={onVerify}
-          onError={handleError}
-          onExpire={() => {
-            try { onVerify(''); } catch {}
-          }}
-          onClose={() => {
-            try { onVerify(''); } catch {}
-          }}
-          theme={theme}
-          size={size}
-        />
+        <div className={isInvisible ? 'sr-only' : ''}>
+          <HCaptcha
+            ref={captchaRef}
+            sitekey={siteKey}
+            onVerify={onVerify}
+            onError={handleError}
+            onExpire={() => {
+              try { onVerify(''); } catch {}
+            }}
+            onClose={() => {
+              try { onVerify(''); } catch {}
+            }}
+            theme={theme}
+            size={size}
+          />
+        </div>
       ) : (
         <div className="text-sm text-warning-700 bg-warning-50 border border-warning-200 rounded-lg p-3">
           hCaptcha não configurado para este ambiente. Defina a variável VITE_HCAPTCHA_SITE_KEY no ambiente de build.
         </div>
       )}
-      {localError && (
+      {!isInvisible && localError && (
         <p className="text-xs text-error-600 mt-1 text-center">{localError}</p>
       )}
     </div>
