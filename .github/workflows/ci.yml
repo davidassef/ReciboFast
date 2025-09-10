@@ -36,6 +36,11 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm run test -- --run
 
+      - name: Build
+        env:
+          VITE_HCAPTCHA_SITE_KEY: ${{ secrets.VITE_HCAPTCHA_SITE_KEY }}
+        run: npm run build
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
@@ -45,8 +50,3 @@ jobs:
           PLAYWRIGHT_BASE_URL: 'http://localhost:5173'
           VITE_HCAPTCHA_SITE_KEY: ${{ secrets.VITE_HCAPTCHA_SITE_KEY }}
         run: npm run e2e
-
-      - name: Build
-        env:
-          VITE_HCAPTCHA_SITE_KEY: ${{ secrets.VITE_HCAPTCHA_SITE_KEY }}
-        run: npm run build
