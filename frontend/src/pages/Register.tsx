@@ -16,6 +16,20 @@ import Terms from './Terms';
 import Privacy from './Privacy';
 import { verifyCaptcha } from '../services/captcha';
 
+// Mapeia mensagens de erro do Supabase para mensagens amigáveis no cadastro
+const mapSupabaseSignUpError = (error: unknown): string => {
+  if (!error) return 'Erro ao criar conta.';
+  const msg = (error as any)?.message?.toString()?.toLowerCase() ?? '';
+  const status = (error as any)?.status as number | undefined;
+  if (msg.includes('already registered') || msg.includes('user already') || msg.includes('already exists')) {
+    return 'Conta já está cadastrada. Faça login ou recupere a senha.';
+  }
+  if (status === 429 || msg.includes('rate limit')) {
+    return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+  }
+  return (error as any)?.message || 'Erro ao criar conta.';
+};
+
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -86,10 +100,20 @@ const Register: React.FC = () => {
       );
       
       if (error) {
-        setError(error.message || 'Erro ao criar conta');
-      } else if (data?.user) {
+        setError(mapSupabaseSignUpError(error));
+        return;
+      }
+
+      // Heurística do Supabase: quando identities.length === 0 no signUp,
+      // o e-mail já existe na base — tratar como conta já cadastrada
+      const identities = (data as any)?.user?.identities;
+      if (Array.isArray(identities) && identities.length === 0) {
+        setError('Conta já está cadastrada. Faça login ou recupere a senha.');
+        return;
+      }
+
+      if (data?.user) {
         setSuccess('Conta criada com sucesso! Verifique seu email para confirmar a conta.');
-        // Redirecionar para login após alguns segundos
         setTimeout(() => {
           navigate('/login');
         }, 3000);
