@@ -1,10 +1,14 @@
 // MIT License
 // Autor atual: David Assef
 // Descrição: Gera ícones PWA válidos se faltarem ou estiverem inválidos
-// Data: 08-09-2025
+// Data: 10-09-2025
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // PNG 1x1 transparente (válido). Usado como fallback mínimo.
 // Fonte: transparent pixel PNG
