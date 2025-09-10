@@ -51,3 +51,11 @@ jobs:
           VITE_HCAPTCHA_SITE_KEY: ${{ secrets.VITE_HCAPTCHA_SITE_KEY }}
           VITE_E2E_BYPASS: '1'
         run: npm run e2e
+
+      - name: Trigger Vercel Deploy (Production)
+        if: ${{ secrets.VERCEL_DEPLOY_HOOK_URL != '' }}
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering Vercel Deploy via Hook"
+          curl -s -X POST "$VERCEL_DEPLOY_HOOK_URL" || true
