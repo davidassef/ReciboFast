@@ -1,0 +1,21 @@
+# MIT License
+# Autor atual: David Assef
+# Descrição: Exemplo de variáveis de ambiente do backend (Go API)
+# Data: 10-09-2025
+
+# Porta de escuta do servidor HTTP
+PORT=8080
+
+# CORS: lista de origens permitidas (separadas por vírgula)
+# Ex.: https://recibo-fast.vercel.app,https://seu-dominio.com
+ALLOWED_ORIGINS=*
+
+# hCaptcha (Servidor)
+# SECRET do hCaptcha usada pelo endpoint /api/v1/captcha/verify
+# ATENÇÃO: NUNCA exponha a SECRET no frontend.
+HCAPTCHA_SECRET=
+
+# hCaptcha (Frontend helper opcional)
+# A sitekey pública pode ser usada pelo endpoint /api/v1/captcha/sitekey
+# (não é obrigatório preencher aqui se o frontend já injeta a VITE_HCAPTCHA_SITE_KEY)
+HCAPTCHA_SITE_KEY=
