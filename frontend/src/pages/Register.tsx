@@ -76,19 +76,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Verificação do hCaptcha (server-side em produção)
-      if (!captchaToken) {
-        setError('Confirme que você é humano.');
-        setIsLoading(false);
-        return;
-      }
-      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
-      if (!ok) {
-        setError(captchaError || 'Falha na verificação de segurança.');
-        setIsLoading(false);
-        return;
-      }
-
+      // Captcha temporariamente desabilitado
       const { data, error } = await signUp(
         formData.email,
         formData.password,
@@ -118,11 +106,6 @@ const Register: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    if (!captchaToken) {
-      setPendingSubmit(true);
-      try { captchaApi?.execute(); } catch {}
-      return;
-    }
     await proceedRegister();
   };
 

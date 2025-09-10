@@ -17,38 +17,8 @@ export interface HCaptchaVerifyResponse {
   hostname?: string;
 }
 
-export async function verifyCaptcha(token: string): Promise<{ ok: boolean; error?: string }> {
-  try {
-    // Em localhost, não valida server-side (usa chave de teste no componente)
-    if (isLocalhost()) {
-      return { ok: true };
-    }
-
-    const sitekey = (import.meta as any)?.env?.VITE_HCAPTCHA_SITE_KEY as string | undefined;
-    const { data, error } = await apiClient.post<HCaptchaVerifyResponse>('/captcha/verify', {
-      token,
-      sitekey,
-    });
-
-    if (error) {
-      // Fallback temporário: permitir fluxo quando backend ainda não tem a secret configurada
-      if (/HCAPTCHA_SECRET/i.test(error)) {
-        console.warn('[captcha] HCAPTCHA_SECRET ausente no backend — aplicando fallback temporário (menos seguro).');
-        return { ok: true };
-      }
-      return { ok: false, error };
-    }
-    if (!data) {
-      return { ok: false, error: 'Sem resposta do verificador de segurança.' };
-    }
-
-    if (!data.success) {
-      const codes = (data['error-codes'] || []).join(', ');
-      return { ok: false, error: codes || 'Falha na verificação do hCaptcha.' };
-    }
-
-    return { ok: true };
-  } catch (err: any) {
-    return { ok: false, error: err?.message || 'Erro ao verificar o hCaptcha.' };
-  }
+export async function verifyCaptcha(_token: string): Promise<{ ok: boolean; error?: string }> {
+  // Desabilitado temporariamente por solicitação: focar nas funcionalidades do app
+  // TODO: Reativar verificação server-side do hCaptcha quando as chaves forem configuradas
+  return { ok: true };
 }

@@ -53,19 +53,7 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Verificação do hCaptcha (server-side em produção, no serviço abstrai localhost)
-      if (!captchaToken) {
-        setError('Confirme que você é humano.');
-        setIsLoading(false);
-        return;
-      }
-      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
-      if (!ok) {
-        setError(captchaError || 'Falha na verificação de segurança.');
-        setIsLoading(false);
-        return;
-      }
-
+      // Captcha temporariamente desabilitado
       const { data, error } = await signIn(email, password);
       
       if (error) {
