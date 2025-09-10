@@ -232,10 +232,10 @@ const Login: React.FC = () => {
                 <Captcha
                   onVerify={setCaptchaToken}
                   onError={() => setError('Falha na verificação de segurança. Tente novamente.')}
-                  size="compact"
+                  size="normal"
                   theme="light"
                   align="center"
-                  className="mt-1"
+                  className="mt-2"
                 />
               </div>
 
