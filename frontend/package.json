@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/checkEnv.js && node scripts/generateIcons.js",
+    "prebuild": "node scripts/checkEnv.js && node scripts/generateIcons.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5173 --strictPort",
     "test": "vitest",
