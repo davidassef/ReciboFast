@@ -8,8 +8,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Lock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
-import Captcha from '../components/Captcha';
-import { verifyCaptcha } from '../services/captcha';
+// Captcha temporariamente desabilitado
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -17,7 +16,6 @@ const ResetPassword: React.FC = () => {
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -35,20 +33,8 @@ const ResetPassword: React.FC = () => {
       setError('As senhas não coincidem.');
       return;
     }
-    if (!captchaToken) {
-      setError('Confirme que você é humano.');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
-      if (!ok) {
-        setError(captchaError || 'Falha na verificação de segurança.');
-        setIsLoading(false);
-        return;
-      }
-
       const { error } = await updatePassword(password);
       if (error) {
         setError(error.message || 'Não foi possível redefinir sua senha. O link pode ter expirado.');
@@ -104,10 +90,12 @@ const ResetPassword: React.FC = () => {
                 autoComplete="new-password"
               />
 
-              {/* Captcha */}
-              <Captcha onVerify={setCaptchaToken} onError={() => setError('Falha na verificação de segurança. Tente novamente.')} />
-
-              <Button type="submit" className="w-full" disabled={!captchaToken || isLoading} loading={isLoading}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || password.length < 6 || password !== confirmPassword}
+                loading={isLoading}
+              >
                 {isLoading ? 'Salvando...' : 'Salvar nova senha'}
               </Button>
 
