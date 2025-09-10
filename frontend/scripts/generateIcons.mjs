@@ -72,4 +72,19 @@ function writeIfNeeded(filePath, base64) {
     writeIfNeeded(path.join(publicDir, 'pwa-512x512.png'), PNG_512_BASE64);
     console.log('[generateIcons] sharp indisponível — usando fallback base64');
   }
+
+  // favicon.svg simples com mesma identidade visual
+  const faviconSvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#g)"/>
+  <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-weight="800" fill="#fff" font-size="26">RF</text>
+</svg>`;
+  fs.writeFileSync(path.join(publicDir, 'favicon.svg'), Buffer.from(faviconSvg));
+  console.log('[generateIcons] favicon.svg gerado');
 })();
