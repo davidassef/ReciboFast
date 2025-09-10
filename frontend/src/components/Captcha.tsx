@@ -74,16 +74,15 @@ export default function Captcha({ onVerify, onError, theme = 'light', size = 'co
   };
 
   const alignClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center';
-  const shellHeight = 52; // altura parecida com botão grande
-  // Ajustes: compact fica um pouco maior; normal reduz para caber
-  const scale = size === 'compact' ? 1.08 : 0.78;
+  // Altura mínima para evitar corte do widget (especialmente a checkbox)
+  const minH = size === 'compact' ? 86 : 120;
 
   return (
     <div className={`my-3 w-full flex ${alignClass} ${className || ''}`}>
       {siteKey ? (
         <div
-          className="inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-white shadow-sm px-3 overflow-hidden"
-          style={{ height: shellHeight, transform: `scale(${scale})`, transformOrigin: 'center' }}
+          className="inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-white shadow-sm px-3"
+          style={{ minHeight: minH }}
         >
           <HCaptcha
             ref={captchaRef}
