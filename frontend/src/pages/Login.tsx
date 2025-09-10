@@ -42,12 +42,13 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaApi, setCaptchaApi] = useState<{ execute: () => void; reset: () => void } | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
   
   const { signIn, resendEmailConfirmation, refreshUser } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const proceedLogin = async () => {
     setError('');
     setIsLoading(true);
 
@@ -82,8 +83,30 @@ const Login: React.FC = () => {
       setError(mapSupabaseAuthError(error));
     } finally {
       setIsLoading(false);
+      setPendingSubmit(false);
+      // opcional: resetar captcha depois
+      try { captchaApi?.reset(); } catch {}
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Execução programática do captcha em modo invisível
+    if (!captchaToken) {
+      setPendingSubmit(true);
+      try { captchaApi?.execute(); } catch {}
+      return;
+    }
+    await proceedLogin();
+  };
+
+  // Continua o fluxo assim que o token for emitido
+  React.useEffect(() => {
+    if (pendingSubmit && captchaToken) {
+      proceedLogin();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSubmit, captchaToken]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -232,9 +255,10 @@ const Login: React.FC = () => {
                 <Captcha
                   onVerify={setCaptchaToken}
                   onError={() => setError('Falha na verificação de segurança. Tente novamente.')}
-                  size="normal"
+                  size="invisible"
                   theme="light"
                   align="center"
+                  onReady={(api) => setCaptchaApi(api)}
                   className="mt-2"
                 />
               </div>
@@ -245,7 +269,7 @@ const Login: React.FC = () => {
                 variant="primary"
                 size="lg"
                 className="w-full"
-                disabled={isLoading || !captchaToken}
+                disabled={isLoading}
                 loading={isLoading}
               >
                 {!isLoading && <LogIn className="w-4 h-4 mr-2" />}

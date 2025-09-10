@@ -30,6 +30,8 @@ const Register: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaApi, setCaptchaApi] = useState<{ execute: () => void; reset: () => void } | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   
@@ -68,15 +70,9 @@ const Register: React.FC = () => {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const proceedRegister = async () => {
     setError('');
     setSuccess('');
-
-    if (!validateForm()) {
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -114,8 +110,28 @@ const Register: React.FC = () => {
       setError('Erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
+      setPendingSubmit(false);
+      try { captchaApi?.reset(); } catch {}
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    if (!captchaToken) {
+      setPendingSubmit(true);
+      try { captchaApi?.execute(); } catch {}
+      return;
+    }
+    await proceedRegister();
+  };
+
+  React.useEffect(() => {
+    if (pendingSubmit && captchaToken) {
+      proceedRegister();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSubmit, captchaToken]);
 
   const getPasswordStrength = (password: string) => {
     let strength = 0;
@@ -315,9 +331,10 @@ const Register: React.FC = () => {
                 <Captcha
                   onVerify={setCaptchaToken}
                   onError={() => setError('Falha na verificação de segurança. Tente novamente.')}
-                  size="normal"
+                  size="invisible"
                   theme="light"
                   align="center"
+                  onReady={(api) => setCaptchaApi(api)}
                   className="mt-2"
                 />
               </div>
@@ -325,7 +342,7 @@ const Register: React.FC = () => {
               {/* Submit Button */}
               <Button
                  type="submit"
-                 disabled={isLoading || !captchaToken}
+                 disabled={isLoading}
                  className="w-full py-4 text-base font-semibold"
                  size="lg"
                >
