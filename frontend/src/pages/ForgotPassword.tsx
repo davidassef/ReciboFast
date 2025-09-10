@@ -16,6 +16,7 @@ const ForgotPassword: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [cooldown, setCooldown] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,9 +32,27 @@ const ForgotPassword: React.FC = () => {
     try {
       const { error } = await resetPassword(email);
       if (error) {
-        setError(error.message || 'Não foi possível enviar o e-mail de redefinição.');
+        const msg = (error as any)?.message?.toString()?.toLowerCase() ?? '';
+        const status = (error as any)?.status as number | undefined;
+        if (status === 429 || msg.includes('rate') || msg.includes('too many')) {
+          setError('Muitas tentativas. Aguarde 1 minuto antes de tentar novamente.');
+        } else {
+          setError((error as any)?.message || 'Não foi possível enviar o e-mail de redefinição.');
+        }
       } else {
         setSuccess('Enviamos um e-mail com instruções para redefinir sua senha. Verifique sua caixa de entrada.');
+        // Ativa cooldown de 60s para evitar spam do endpoint
+        setCooldown(60);
+        const timer = setInterval(() => {
+          setCooldown((c) => {
+            if (c <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return c - 1;
+          });
+          return undefined as unknown as number; // satisfazer tipo do TS no callback
+        }, 1000);
       }
     } catch (err: any) {
       setError(err?.message || 'Erro inesperado ao enviar o e-mail.');
@@ -67,9 +86,9 @@ const ForgotPassword: React.FC = () => {
                 autoComplete="email"
               />
 
-              <Button type="submit" className="w-full" disabled={!email || isLoading} loading={isLoading}>
+              <Button type="submit" className="w-full" disabled={!email || isLoading || cooldown > 0} loading={isLoading}>
                 {!isLoading && <Send className="w-4 h-4 mr-2" />}
-                {isLoading ? 'Enviando...' : 'Enviar link de redefinição'}
+                {isLoading ? 'Enviando...' : cooldown > 0 ? `Aguarde ${cooldown}s` : 'Enviar link de redefinição'}
               </Button>
             </form>
 

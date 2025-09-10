@@ -7,9 +7,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 let sharp = null;
+let PNG = null;
 try {
   // Import dinâmico para não quebrar caso sharp não esteja instalado
   sharp = (await import('sharp')).default;
+} catch {}
+try {
+  // Fallback: gerar PNGs via pngjs
+  PNG = (await import('pngjs')).PNG;
 } catch {}
 
 const __filename = fileURLToPath(import.meta.url);
@@ -67,10 +72,32 @@ function writeIfNeeded(filePath, base64) {
     await sharp(svg192).png({ compressionLevel: 9 }).toFile(out192);
     await sharp(svg512).png({ compressionLevel: 9 }).toFile(out512);
     console.log('[generateIcons] ícones gerados com sharp');
+  } else if (PNG) {
+    // Fallback: gera PNGs sólidos válidos nas dimensões exatas usando pngjs
+    const out192 = path.join(publicDir, 'pwa-192x192.png');
+    const out512 = path.join(publicDir, 'pwa-512x512.png');
+
+    const makePng = (size, color = { r: 37, g: 99, b: 235, a: 255 }) => {
+      const png = new PNG({ width: size, height: size });
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const idx = (size * y + x) << 2;
+          png.data[idx] = color.r;
+          png.data[idx + 1] = color.g;
+          png.data[idx + 2] = color.b;
+          png.data[idx + 3] = color.a;
+        }
+      }
+      return PNG.sync.write(png);
+    };
+
+    fs.writeFileSync(out192, makePng(192));
+    fs.writeFileSync(out512, makePng(512));
+    console.log('[generateIcons] ícones gerados com pngjs');
   } else {
     writeIfNeeded(path.join(publicDir, 'pwa-192x192.png'), PNG_192_BASE64);
     writeIfNeeded(path.join(publicDir, 'pwa-512x512.png'), PNG_512_BASE64);
-    console.log('[generateIcons] sharp indisponível — usando fallback base64');
+    console.log('[generateIcons] sharp/pngjs indisponíveis — usando fallback base64');
   }
 
   // favicon.svg simples com mesma identidade visual
@@ -87,4 +114,33 @@ function writeIfNeeded(filePath, base64) {
 </svg>`;
   fs.writeFileSync(path.join(publicDir, 'favicon.svg'), Buffer.from(faviconSvg));
   console.log('[generateIcons] favicon.svg gerado');
+
+  // manifest.webmanifest mínimo apontando para os ícones gerados
+  const manifest = {
+    name: 'ReciboFast',
+    short_name: 'ReciboFast',
+    description: 'Gestão de contratos, recibos e assinaturas',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: '#2563eb',
+    icons: [
+      {
+        src: '/pwa-192x192.png',
+        sizes: '192x192',
+        type: 'image/png'
+      },
+      {
+        src: '/pwa-512x512.png',
+        sizes: '512x512',
+        type: 'image/png'
+      }
+    ]
+  };
+  fs.writeFileSync(
+    path.join(publicDir, 'manifest.webmanifest'),
+    Buffer.from(JSON.stringify(manifest, null, 2))
+  );
+  console.log('[generateIcons] manifest.webmanifest gerado');
 })();
