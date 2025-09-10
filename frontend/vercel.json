@@ -13,9 +13,10 @@
       ]
     }
   ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://recibofast.onrender.com/api/$1" },
-    { "source": "/healthz", "destination": "https://recibofast.onrender.com/healthz" },
-    { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "https://recibofast.onrender.com/api/$1" },
+    { "src": "/healthz", "dest": "https://recibofast.onrender.com/healthz" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
