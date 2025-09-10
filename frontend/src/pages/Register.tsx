@@ -292,6 +292,26 @@ const Register: React.FC = () => {
                 </div>
               )}
 
+              {/* CTAs quando a conta já existe */}
+              {error && error.toLowerCase().includes('já está cadastrada') && (
+                <div className="flex flex-wrap gap-2 -mt-2 animate-fadeIn">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-white text-xs hover:bg-primary-700 transition-colors"
+                  >
+                    Ir para Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-primary-700 border border-primary-300 hover:bg-primary-50 transition-colors"
+                  >
+                    Recuperar senha
+                  </button>
+                </div>
+              )}
+
               {/* Success Message */}
               {success && (
                 <div className="bg-gradient-to-r from-green-50 to-green-100/50 border border-green-200/60 rounded-xl p-4 flex items-center space-x-3 backdrop-blur-sm animate-slideInDown">
