@@ -15,7 +15,6 @@
   ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://recibofast.onrender.com/api/:path*" },
-    { "source": "/healthz", "destination": "https://recibofast.onrender.com/healthz" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/healthz", "destination": "https://recibofast.onrender.com/healthz" }
   ]
 }
