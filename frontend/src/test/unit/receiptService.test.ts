@@ -5,51 +5,33 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Declara todos os mocks de forma hoisted para uso dentro das factories de vi.mock
-const h = vi.hoisted(() => ({
-  mockGetUser: vi.fn(),
-  mockFrom: vi.fn(),
-  mockSelect: vi.fn(),
-  mockEq: vi.fn(),
-  mockOrder: vi.fn(),
-  mockLimit: vi.fn(),
-  mockSingle: vi.fn(),
-  mockInsert: vi.fn(),
-  mockUpdate: vi.fn(),
-  mockStorageFrom: vi.fn(),
-  mockStorageUpload: vi.fn(),
-  mockStorageGetPublicUrl: vi.fn(),
-}));
-
-// Aliases locais para legibilidade nos testes
-const {
-  mockGetUser,
-  mockFrom,
-  mockSelect,
-  mockEq,
-  mockOrder,
-  mockLimit,
-  mockSingle,
-  mockInsert,
-  mockUpdate,
-  mockStorageFrom,
-  mockStorageUpload,
-  mockStorageGetPublicUrl,
-} = h as any;
-
-// Mock do módulo '../lib/supabase'
+// Mock do módulo '../../lib/supabase' sem depender de variáveis externas
 vi.mock('../../lib/supabase', () => {
+  const mockGetUser = vi.fn();
+  const mockFrom = vi.fn();
+  const mockSelect = vi.fn();
+  const mockEq = vi.fn();
+  const mockOrder = vi.fn();
+  const mockLimit = vi.fn();
+  const mockSingle = vi.fn();
+  const mockInsert = vi.fn();
+  const mockUpdate = vi.fn();
+  const mockStorageFrom = vi.fn();
+  const mockStorageUpload = vi.fn();
+  const mockStorageGetPublicUrl = vi.fn();
+
   const supabase = {
-    auth: {
-      getUser: h.mockGetUser,
-    },
-    from: (table: string) => h.mockFrom(table),
-    storage: {
-      from: (bucket: string) => h.mockStorageFrom(bucket),
-    },
+    auth: { getUser: mockGetUser },
+    from: (table: string) => mockFrom(table),
+    storage: { from: (bucket: string) => mockStorageFrom(bucket) },
   } as any;
-  return { supabase };
+
+  return { supabase, __mocks: { mockGetUser, mockFrom, mockSelect, mockEq, mockOrder, mockLimit, mockSingle, mockInsert, mockUpdate, mockStorageFrom, mockStorageUpload, mockStorageGetPublicUrl } };
 });
+
+// Importa os mocks expostos pelo módulo mocked (via any para evitar erro TS)
+import * as sbModule from '../../lib/supabase';
+const sbMocks = (sbModule as any).__mocks as any;
 
 // Mock jsPDF para não gerar PDFs reais
 vi.mock('jspdf', () => {
@@ -81,34 +63,34 @@ describe('ReceiptService', () => {
     vi.clearAllMocks();
 
     // auth.getUser
-    mockGetUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
+    sbMocks.mockGetUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
 
     // Storage encadeado
-    mockStorageFrom.mockImplementation((_bucket: string) => ({
-      upload: mockStorageUpload,
-      getPublicUrl: mockStorageGetPublicUrl,
+    sbMocks.mockStorageFrom.mockImplementation((_bucket: string) => ({
+      upload: sbMocks.mockStorageUpload,
+      getPublicUrl: sbMocks.mockStorageGetPublicUrl,
     }));
 
     // from encadeado
-    mockFrom.mockImplementation((_table: string) => ({
+    sbMocks.mockFrom.mockImplementation((_table: string) => ({
       select: (..._cols: any[]) => {
-        mockSelect(..._cols);
+        sbMocks.mockSelect(..._cols);
         return {
-          eq: (...args: any[]) => { mockEq(...args); return this; },
-          order: (...args: any[]) => { mockOrder(...args); return this; },
-          limit: (...args: any[]) => { mockLimit(...args); return this; },
-          single: () => mockSingle(),
+          eq: (...args: any[]) => { sbMocks.mockEq(...args); return this; },
+          order: (...args: any[]) => { sbMocks.mockOrder(...args); return this; },
+          limit: (...args: any[]) => { sbMocks.mockLimit(...args); return this; },
+          single: () => sbMocks.mockSingle(),
         } as any;
       },
-      insert: (..._values: any[]) => ({ select: () => ({ single: () => mockSingle() }) }),
+      insert: (..._values: any[]) => ({ select: () => ({ single: () => sbMocks.mockSingle() }) }),
       update: (..._values: any[]) => ({ eq: () => ({}) }),
       eq: () => ({})
     }));
 
     // Defaults:
-    mockSingle.mockResolvedValue({ data: null, error: null });
-    mockStorageUpload.mockResolvedValue({ data: { path: `${USER_ID}/REC-2025-000001.pdf` }, error: null });
-    mockStorageGetPublicUrl.mockReturnValue({ data: { publicUrl: 'https://example.com/file.pdf' } });
+    sbMocks.mockSingle.mockResolvedValue({ data: null, error: null });
+    sbMocks.mockStorageUpload.mockResolvedValue({ data: { path: `${USER_ID}/REC-2025-000001.pdf` }, error: null });
+    sbMocks.mockStorageGetPublicUrl.mockReturnValue({ data: { publicUrl: 'https://example.com/file.pdf' } });
   });
 
   afterEach(() => {
@@ -118,7 +100,7 @@ describe('ReceiptService', () => {
   it('createReceipt: deve criar recibo mínimo sem assinatura/qr code', async () => {
     // Simular que não há recibos anteriores (generateReceiptNumber retorna REC-2025-000001)
     // chain: from('rf_receipts').select('receipt_number').eq('user_id').order().limit(1).single()
-    mockFrom.mockImplementationOnce((_table: string) => ({
+    sbMocks.mockFrom.mockImplementationOnce((_table: string) => ({
       select: () => ({
         eq: () => ({
           order: () => ({ limit: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) })
@@ -127,26 +109,26 @@ describe('ReceiptService', () => {
     }));
 
     // Payer
-    mockFrom.mockImplementationOnce((_table: string) => ({
+    sbMocks.mockFrom.mockImplementationOnce((_table: string) => ({
       select: () => ({
         eq: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { id: 'payer-1', name: 'Pagador', document: '123', email: 'p@e.com', phone: '999' }, error: null }) }) })
       })
     }));
 
     // Profile
-    mockFrom.mockImplementationOnce((_table: string) => ({
+    sbMocks.mockFrom.mockImplementationOnce((_table: string) => ({
       select: () => ({
         eq: () => ({ single: () => Promise.resolve({ data: { id: 'profile-1', name: 'Emissor', document: '456', email: 'e@e.com', phone: '888' }, error: null }) })
       })
     }));
 
     // Insert receipt
-    mockFrom.mockImplementationOnce((_table: string) => ({
+    sbMocks.mockFrom.mockImplementationOnce((_table: string) => ({
       insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'r1' }, error: null }) }) })
     }));
 
     // Update file_path
-    mockFrom.mockImplementationOnce((_table: string) => ({
+    sbMocks.mockFrom.mockImplementationOnce((_table: string) => ({
       update: () => ({ eq: () => ({}) })
     }));
 
@@ -161,12 +143,12 @@ describe('ReceiptService', () => {
     } as any);
 
     expect(result).toHaveProperty('id', 'r1');
-    expect(mockStorageUpload).toHaveBeenCalledTimes(1);
+    expect(sbMocks.mockStorageUpload).toHaveBeenCalledTimes(1);
   });
 
   it('getReceiptPDFUrl: deve retornar URL pública', async () => {
     // Buscar receipt com file_path
-    mockFrom.mockImplementationOnce((_table: string) => ({
+    sbMocks.mockFrom.mockImplementationOnce((_table: string) => ({
       select: () => ({ eq: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { file_path: `${USER_ID}/REC-2025-000001.pdf` }, error: null }) }) }) })
     }));
 

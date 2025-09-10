@@ -5,24 +5,35 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mocks hoisted para uso seguro dentro de vi.mock
-const h = vi.hoisted(() => ({
-  mockGetUser: vi.fn(),
-  mockStorageFrom: vi.fn(),
-  mockStorageUpload: vi.fn(),
-  mockStorageRemove: vi.fn(),
-  mockStorageGetPublicUrl: vi.fn(),
-  mockFrom: vi.fn(),
-  mockInsert: vi.fn(),
-  mockSelect: vi.fn(),
-  mockSingle: vi.fn(),
-  mockUpdate: vi.fn(),
-  mockDelete: vi.fn(),
-}));
+// Mock do módulo '../../lib/supabase' isolado e auto-contido
+vi.mock('../../lib/supabase', () => {
+  const mockGetUser = vi.fn();
+  const mockUpdateUser = vi.fn();
+  const mockStorageFrom = vi.fn();
+  const mockStorageUpload = vi.fn();
+  const mockStorageRemove = vi.fn();
+  const mockStorageGetPublicUrl = vi.fn();
+  const mockFrom = vi.fn();
+  const mockInsert = vi.fn();
+  const mockSelect = vi.fn();
+  const mockSingle = vi.fn();
+  const mockUpdate = vi.fn();
+  const mockDelete = vi.fn();
 
-// Aliases locais para facilitar o uso nos testes
+  const supabase = {
+    auth: { getUser: mockGetUser, updateUser: mockUpdateUser },
+    storage: { from: (bucket: string) => mockStorageFrom(bucket) },
+    from: (table: string) => mockFrom(table),
+  } as any;
+
+  return { supabase, __mocks: { mockGetUser, mockUpdateUser, mockStorageFrom, mockStorageUpload, mockStorageRemove, mockStorageGetPublicUrl, mockFrom, mockInsert, mockSelect, mockSingle, mockUpdate, mockDelete } };
+});
+
+// Importa os mocks definidos na factory
+import * as sbModule from '../../lib/supabase';
 const {
   mockGetUser,
+  mockUpdateUser,
   mockStorageFrom,
   mockStorageUpload,
   mockStorageRemove,
@@ -33,21 +44,7 @@ const {
   mockSingle,
   mockUpdate,
   mockDelete,
-} = h as any;
-
-// Mock do módulo '../lib/supabase'
-vi.mock('../../lib/supabase', () => {
-  const supabase = {
-    auth: {
-      getUser: h.mockGetUser,
-    },
-    storage: {
-      from: (bucket: string) => h.mockStorageFrom(bucket),
-    },
-    from: (table: string) => h.mockFrom(table),
-  } as any;
-  return { supabase };
-});
+} = (sbModule as any).__mocks;
 
 // Importa o módulo sob teste após o mock
 import { SignatureService } from '../../services/signatureService';
@@ -73,6 +70,7 @@ describe('SignatureService', () => {
       upload: mockStorageUpload,
       remove: mockStorageRemove,
       getPublicUrl: mockStorageGetPublicUrl,
+      createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: '' }, error: null }), // força fallback
     }));
 
     // from mocks encadeados (insert/select/single, update/delete)
@@ -208,6 +206,14 @@ describe('SignatureService', () => {
             select: () => chain,
             eq: () => chain,
             order: () => Promise.resolve({ data: rows, error: null }),
+          };
+          return chain;
+        }
+        if (table === 'signatures') {
+          const chain: any = {
+            select: () => chain,
+            eq: () => chain,
+            order: () => Promise.resolve({ data: [], error: null }),
           };
           return chain;
         }
