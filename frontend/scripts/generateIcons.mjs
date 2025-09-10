@@ -43,6 +43,9 @@ function writeIfNeeded(filePath, base64) {
 
 (async function main() {
   const publicDir = path.resolve(__dirname, '..', 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
   if (sharp) {
     // Gera imagens a partir de um SVG simples com as iniciais "RF"
     const svgTemplate = (size) => `<?xml version="1.0" encoding="UTF-8"?>
@@ -69,10 +72,16 @@ function writeIfNeeded(filePath, base64) {
     const out512 = path.join(publicDir, 'pwa-512x512.png');
     const svg192 = Buffer.from(svgTemplate(192));
     const svg512 = Buffer.from(svgTemplate(512));
-    await sharp(svg192).png({ compressionLevel: 9 }).toFile(out192);
-    await sharp(svg512).png({ compressionLevel: 9 }).toFile(out512);
-    console.log('[generateIcons] ícones gerados com sharp');
-  } else if (PNG) {
+    try {
+      await sharp(svg192).png({ compressionLevel: 9 }).toFile(out192);
+      await sharp(svg512).png({ compressionLevel: 9 }).toFile(out512);
+      console.log('[generateIcons] ícones gerados com sharp');
+    } catch (e) {
+      console.warn('[generateIcons] falha com sharp, tentando pngjs:', e?.message || e);
+      sharp = null; // força fallback abaixo
+    }
+  } 
+  if (!sharp && PNG) {
     // Fallback: gera PNGs sólidos válidos nas dimensões exatas usando pngjs
     const out192 = path.join(publicDir, 'pwa-192x192.png');
     const out512 = path.join(publicDir, 'pwa-512x512.png');
