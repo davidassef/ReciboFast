@@ -14,11 +14,17 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
-  // Bypass de autenticação para E2E/local apenas (não afeta produção)
-  const bypassAuth = (import.meta.env.MODE !== 'production') && typeof window !== 'undefined' &&
-    (() => {
-      try { return localStorage.getItem('e2e_bypass_auth') === '1'; } catch { return false; }
-    })();
+  // Bypass de autenticação para E2E/local
+  // - Via env em build (VITE_E2E_BYPASS=1)
+  // - Via localStorage (e2e_bypass_auth = '1') durante desenvolvimento/testes
+  const bypassAuth = (() => {
+    const envBypass = (import.meta as any)?.env?.VITE_E2E_BYPASS === '1';
+    let localBypass = false;
+    if (typeof window !== 'undefined') {
+      try { localBypass = localStorage.getItem('e2e_bypass_auth') === '1'; } catch {}
+    }
+    return !!envBypass || !!localBypass;
+  })();
 
   // Mostrar loading enquanto verifica autenticação
   if (loading && !bypassAuth) {
