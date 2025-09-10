@@ -8,13 +8,11 @@ import { Link } from 'react-router-dom';
 import { Mail, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input, Card, CardHeader, CardBody } from '../components/ui';
-import Captcha from '../components/Captcha';
-import { verifyCaptcha } from '../services/captcha';
+// Captcha temporariamente desabilitado
 
 const ForgotPassword: React.FC = () => {
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -29,25 +27,8 @@ const ForgotPassword: React.FC = () => {
       return;
     }
 
-    if (!captchaToken) {
-      setError('Confirme que você é humano.');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      if (!captchaToken) {
-        setError('Confirme que você é humano.');
-        setIsLoading(false);
-        return;
-      }
-      const { ok, error: captchaError } = await verifyCaptcha(captchaToken);
-      if (!ok) {
-        setError(captchaError || 'Falha na verificação de segurança.');
-        setIsLoading(false);
-        return;
-      }
-
       const { error } = await resetPassword(email);
       if (error) {
         setError(error.message || 'Não foi possível enviar o e-mail de redefinição.');
@@ -86,10 +67,7 @@ const ForgotPassword: React.FC = () => {
                 autoComplete="email"
               />
 
-              {/* Captcha */}
-              <Captcha onVerify={setCaptchaToken} onError={() => setError('Falha na verificação de segurança. Tente novamente.')} />
-
-              <Button type="submit" className="w-full" disabled={!captchaToken || isLoading} loading={isLoading}>
+              <Button type="submit" className="w-full" disabled={!email || isLoading} loading={isLoading}>
                 {!isLoading && <Send className="w-4 h-4 mr-2" />}
                 {isLoading ? 'Enviando...' : 'Enviar link de redefinição'}
               </Button>
