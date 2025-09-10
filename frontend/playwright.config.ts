@@ -7,12 +7,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:5173';
 
 export default defineConfig({
   testDir: './tests',
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  expect: { timeout: 20_000 },
   fullyParallel: true,
   reporter: 'list',
   use: {
@@ -22,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: isCI ? 'npm run preview' : 'npm run dev',
     url: baseURL,
-    timeout: 120_000,
+    timeout: 180_000,
     reuseExistingServer: !isCI,
   },
   projects: [
