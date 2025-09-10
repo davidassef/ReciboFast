@@ -5,24 +5,39 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mocks utilitários Supabase
-const mockGetUser = vi.fn();
-const mockFrom = vi.fn();
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockOrder = vi.fn();
-const mockLimit = vi.fn();
-const mockSingle = vi.fn();
-const mockInsert = vi.fn();
-const mockUpdate = vi.fn();
+// Mocks utilitários Supabase (serão inicializados dentro da factory do vi.mock)
+let mockGetUser: ReturnType<typeof vi.fn>;
+let mockFrom: ReturnType<typeof vi.fn>;
+let mockSelect: ReturnType<typeof vi.fn>;
+let mockEq: ReturnType<typeof vi.fn>;
+let mockOrder: ReturnType<typeof vi.fn>;
+let mockLimit: ReturnType<typeof vi.fn>;
+let mockSingle: ReturnType<typeof vi.fn>;
+let mockInsert: ReturnType<typeof vi.fn>;
+let mockUpdate: ReturnType<typeof vi.fn>;
 
 // Mocks Storage
-const mockStorageFrom = vi.fn();
-const mockStorageUpload = vi.fn();
-const mockStorageGetPublicUrl = vi.fn();
+let mockStorageFrom: ReturnType<typeof vi.fn>;
+let mockStorageUpload: ReturnType<typeof vi.fn>;
+let mockStorageGetPublicUrl: ReturnType<typeof vi.fn>;
 
 // Mock do módulo '../lib/supabase'
 vi.mock('../../lib/supabase', () => {
+  // inicializa todas as fns dentro da factory para evitar hoisting issues
+  mockGetUser = vi.fn();
+  mockFrom = vi.fn();
+  mockSelect = vi.fn();
+  mockEq = vi.fn();
+  mockOrder = vi.fn();
+  mockLimit = vi.fn();
+  mockSingle = vi.fn();
+  mockInsert = vi.fn();
+  mockUpdate = vi.fn();
+
+  mockStorageFrom = vi.fn();
+  mockStorageUpload = vi.fn();
+  mockStorageGetPublicUrl = vi.fn();
+
   const supabase = {
     auth: {
       getUser: mockGetUser,

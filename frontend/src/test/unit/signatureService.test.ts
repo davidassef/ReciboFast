@@ -5,21 +5,32 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mocks utilitários
-const mockGetUser = vi.fn();
-const mockStorageFrom = vi.fn();
-const mockStorageUpload = vi.fn();
-const mockStorageRemove = vi.fn();
-const mockStorageGetPublicUrl = vi.fn();
-const mockFrom = vi.fn();
-const mockInsert = vi.fn();
-const mockSelect = vi.fn();
-const mockSingle = vi.fn();
-const mockUpdate = vi.fn();
-const mockDelete = vi.fn();
+// Mocks utilitários (init dentro da factory do vi.mock)
+let mockGetUser: ReturnType<typeof vi.fn>;
+let mockStorageFrom: ReturnType<typeof vi.fn>;
+let mockStorageUpload: ReturnType<typeof vi.fn>;
+let mockStorageRemove: ReturnType<typeof vi.fn>;
+let mockStorageGetPublicUrl: ReturnType<typeof vi.fn>;
+let mockFrom: ReturnType<typeof vi.fn>;
+let mockInsert: ReturnType<typeof vi.fn>;
+let mockSelect: ReturnType<typeof vi.fn>;
+let mockSingle: ReturnType<typeof vi.fn>;
+let mockUpdate: ReturnType<typeof vi.fn>;
+let mockDelete: ReturnType<typeof vi.fn>;
 
 // Mock do módulo '../lib/supabase'
 vi.mock('../../lib/supabase', () => {
+  mockGetUser = vi.fn();
+  mockStorageFrom = vi.fn();
+  mockStorageUpload = vi.fn();
+  mockStorageRemove = vi.fn();
+  mockStorageGetPublicUrl = vi.fn();
+  mockFrom = vi.fn();
+  mockInsert = vi.fn();
+  mockSelect = vi.fn();
+  mockSingle = vi.fn();
+  mockUpdate = vi.fn();
+  mockDelete = vi.fn();
   const supabase = {
     auth: {
       getUser: mockGetUser,

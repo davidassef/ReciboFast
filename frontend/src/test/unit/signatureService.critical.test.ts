@@ -5,17 +5,26 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-const mockGetUser = vi.fn();
-const mockStorageFrom = vi.fn();
-const mockStorageUpload = vi.fn();
-const mockStorageRemove = vi.fn();
-const mockFrom = vi.fn();
-const mockUpdate = vi.fn();
-const mockInsert = vi.fn();
-const mockSelect = vi.fn();
-const mockSingle = vi.fn();
+let mockGetUser: ReturnType<typeof vi.fn>;
+let mockStorageFrom: ReturnType<typeof vi.fn>;
+let mockStorageUpload: ReturnType<typeof vi.fn>;
+let mockStorageRemove: ReturnType<typeof vi.fn>;
+let mockFrom: ReturnType<typeof vi.fn>;
+let mockUpdate: ReturnType<typeof vi.fn>;
+let mockInsert: ReturnType<typeof vi.fn>;
+let mockSelect: ReturnType<typeof vi.fn>;
+let mockSingle: ReturnType<typeof vi.fn>;
 
 vi.mock('../../lib/supabase', () => {
+  mockGetUser = vi.fn();
+  mockStorageFrom = vi.fn();
+  mockStorageUpload = vi.fn();
+  mockStorageRemove = vi.fn();
+  mockFrom = vi.fn();
+  mockUpdate = vi.fn();
+  mockInsert = vi.fn();
+  mockSelect = vi.fn();
+  mockSingle = vi.fn();
   const supabase = {
     auth: { getUser: mockGetUser },
     storage: { from: (bucket: string) => mockStorageFrom(bucket) },
