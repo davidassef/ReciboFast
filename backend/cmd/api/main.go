@@ -117,6 +117,18 @@ func main() {
         _ = json.NewEncoder(w).Encode(verify)
     })
 
+    // Healthcheck do captcha: informa se o servidor possui HCAPTCHA_SECRET configurado
+    mux.HandleFunc("/api/v1/captcha/health", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        if r.Method != http.MethodGet {
+            w.WriteHeader(http.StatusMethodNotAllowed)
+            _ = json.NewEncoder(w).Encode(map[string]any{"message": "Método não permitido"})
+            return
+        }
+        has := strings.TrimSpace(os.Getenv("HCAPTCHA_SECRET")) != ""
+        _ = json.NewEncoder(w).Encode(map[string]any{"has_secret": has})
+    })
+
     // Stubs mínimos da API v1 para ambiente de desenvolvimento
     // Lista de receitas vazia (paginada)
     mux.HandleFunc("/api/v1/incomes", func(w http.ResponseWriter, r *http.Request) {
