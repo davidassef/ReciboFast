@@ -5,40 +5,46 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mocks utilitários (init dentro da factory do vi.mock)
-let mockGetUser: ReturnType<typeof vi.fn>;
-let mockStorageFrom: ReturnType<typeof vi.fn>;
-let mockStorageUpload: ReturnType<typeof vi.fn>;
-let mockStorageRemove: ReturnType<typeof vi.fn>;
-let mockStorageGetPublicUrl: ReturnType<typeof vi.fn>;
-let mockFrom: ReturnType<typeof vi.fn>;
-let mockInsert: ReturnType<typeof vi.fn>;
-let mockSelect: ReturnType<typeof vi.fn>;
-let mockSingle: ReturnType<typeof vi.fn>;
-let mockUpdate: ReturnType<typeof vi.fn>;
-let mockDelete: ReturnType<typeof vi.fn>;
+// Mocks hoisted para uso seguro dentro de vi.mock
+const h = vi.hoisted(() => ({
+  mockGetUser: vi.fn(),
+  mockStorageFrom: vi.fn(),
+  mockStorageUpload: vi.fn(),
+  mockStorageRemove: vi.fn(),
+  mockStorageGetPublicUrl: vi.fn(),
+  mockFrom: vi.fn(),
+  mockInsert: vi.fn(),
+  mockSelect: vi.fn(),
+  mockSingle: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockDelete: vi.fn(),
+}));
+
+// Aliases locais para facilitar o uso nos testes
+const {
+  mockGetUser,
+  mockStorageFrom,
+  mockStorageUpload,
+  mockStorageRemove,
+  mockStorageGetPublicUrl,
+  mockFrom,
+  mockInsert,
+  mockSelect,
+  mockSingle,
+  mockUpdate,
+  mockDelete,
+} = h as any;
 
 // Mock do módulo '../lib/supabase'
 vi.mock('../../lib/supabase', () => {
-  mockGetUser = vi.fn();
-  mockStorageFrom = vi.fn();
-  mockStorageUpload = vi.fn();
-  mockStorageRemove = vi.fn();
-  mockStorageGetPublicUrl = vi.fn();
-  mockFrom = vi.fn();
-  mockInsert = vi.fn();
-  mockSelect = vi.fn();
-  mockSingle = vi.fn();
-  mockUpdate = vi.fn();
-  mockDelete = vi.fn();
   const supabase = {
     auth: {
-      getUser: mockGetUser,
+      getUser: h.mockGetUser,
     },
     storage: {
-      from: (bucket: string) => mockStorageFrom(bucket),
+      from: (bucket: string) => h.mockStorageFrom(bucket),
     },
-    from: (table: string) => mockFrom(table),
+    from: (table: string) => h.mockFrom(table),
   } as any;
   return { supabase };
 });

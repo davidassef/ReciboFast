@@ -5,46 +5,47 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mocks utilitários Supabase (serão inicializados dentro da factory do vi.mock)
-let mockGetUser: ReturnType<typeof vi.fn>;
-let mockFrom: ReturnType<typeof vi.fn>;
-let mockSelect: ReturnType<typeof vi.fn>;
-let mockEq: ReturnType<typeof vi.fn>;
-let mockOrder: ReturnType<typeof vi.fn>;
-let mockLimit: ReturnType<typeof vi.fn>;
-let mockSingle: ReturnType<typeof vi.fn>;
-let mockInsert: ReturnType<typeof vi.fn>;
-let mockUpdate: ReturnType<typeof vi.fn>;
+// Declara todos os mocks de forma hoisted para uso dentro das factories de vi.mock
+const h = vi.hoisted(() => ({
+  mockGetUser: vi.fn(),
+  mockFrom: vi.fn(),
+  mockSelect: vi.fn(),
+  mockEq: vi.fn(),
+  mockOrder: vi.fn(),
+  mockLimit: vi.fn(),
+  mockSingle: vi.fn(),
+  mockInsert: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockStorageFrom: vi.fn(),
+  mockStorageUpload: vi.fn(),
+  mockStorageGetPublicUrl: vi.fn(),
+}));
 
-// Mocks Storage
-let mockStorageFrom: ReturnType<typeof vi.fn>;
-let mockStorageUpload: ReturnType<typeof vi.fn>;
-let mockStorageGetPublicUrl: ReturnType<typeof vi.fn>;
+// Aliases locais para legibilidade nos testes
+const {
+  mockGetUser,
+  mockFrom,
+  mockSelect,
+  mockEq,
+  mockOrder,
+  mockLimit,
+  mockSingle,
+  mockInsert,
+  mockUpdate,
+  mockStorageFrom,
+  mockStorageUpload,
+  mockStorageGetPublicUrl,
+} = h as any;
 
 // Mock do módulo '../lib/supabase'
 vi.mock('../../lib/supabase', () => {
-  // inicializa todas as fns dentro da factory para evitar hoisting issues
-  mockGetUser = vi.fn();
-  mockFrom = vi.fn();
-  mockSelect = vi.fn();
-  mockEq = vi.fn();
-  mockOrder = vi.fn();
-  mockLimit = vi.fn();
-  mockSingle = vi.fn();
-  mockInsert = vi.fn();
-  mockUpdate = vi.fn();
-
-  mockStorageFrom = vi.fn();
-  mockStorageUpload = vi.fn();
-  mockStorageGetPublicUrl = vi.fn();
-
   const supabase = {
     auth: {
-      getUser: mockGetUser,
+      getUser: h.mockGetUser,
     },
-    from: (table: string) => mockFrom(table),
+    from: (table: string) => h.mockFrom(table),
     storage: {
-      from: (bucket: string) => mockStorageFrom(bucket),
+      from: (bucket: string) => h.mockStorageFrom(bucket),
     },
   } as any;
   return { supabase };
