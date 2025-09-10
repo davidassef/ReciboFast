@@ -10,9 +10,13 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// PNG 1x1 transparente (válido). Usado como fallback mínimo.
-const PNG_1x1_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+// PNG transparentes válidos, pré-gerados nos tamanhos exatos exigidos pelo PWA
+// 192x192 transparente
+const PNG_192_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAMwAAADMAQMAAAC60m2+AAAAA1BMVEUAAACnej3aAAAAAXRSTlMAQObYZgAAABxJREFUOMtjYBgFo2AUjIJRMAqGQTAKBgAAYV0B6jJrA4wAAAAASUVORK5CYII=';
+// 512x512 transparente
+const PNG_512_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAABfX0bXAAAAA1BMVEUAAACnej3aAAAAAXRSTlMAQObYZgAAAB1JREFUOMtjYBgFo2AUjIJRMAqGQTAKhsEAAJd+AeaCw5r6AAAAAElFTkSuQmCC';
 
 function writeIfNeeded(filePath, base64) {
   try {
@@ -29,10 +33,6 @@ function writeIfNeeded(filePath, base64) {
 
 (function main() {
   const publicDir = path.resolve(__dirname, '..', 'public');
-  const icons = [
-    path.join(publicDir, 'pwa-192x192.png'),
-    path.join(publicDir, 'pwa-512x512.png'),
-  ];
-
-  icons.forEach((iconPath) => writeIfNeeded(iconPath, PNG_1x1_BASE64));
+  writeIfNeeded(path.join(publicDir, 'pwa-192x192.png'), PNG_192_BASE64);
+  writeIfNeeded(path.join(publicDir, 'pwa-512x512.png'), PNG_512_BASE64);
 })();
