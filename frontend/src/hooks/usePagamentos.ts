@@ -31,6 +31,21 @@ export const usePagamentos = () => {
     stats: null
   });
 
+  // Offline (localStorage) helpers
+  const LS_KEY = 'offline_pagamentos';
+  const readOffline = useCallback((): Pagamento[] => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const writeOffline = useCallback((arr: Pagamento[]) => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch {}
+  }, []);
+
   // Atualiza o estado de forma segura
   const updateState = useCallback((updates: Partial<PagamentosState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -54,8 +69,10 @@ export const usePagamentos = () => {
         toast.success('Pagamento registrado com sucesso!');
         return novoPagamento;
       } else {
-        // Fallback para IndexedDB
-        return await registrarPagamentoOffline(receitaId, pagamentoData);
+        // Fallback offline
+        const off = await registrarPagamentoOffline(receitaId, pagamentoData);
+        updateState({ loading: false });
+        return off;
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao registrar pagamento';
@@ -69,10 +86,24 @@ export const usePagamentos = () => {
 
   // Registra pagamento offline (fallback)
   const registrarPagamentoOffline = useCallback(async (receitaId: string, pagamentoData: PagamentoForm): Promise<Pagamento> => {
-    // TODO: Implementar cache local com IndexedDB/localStorage
-    console.log('Tentativa de registro offline:', { receitaId, pagamentoData });
-    throw new Error('API não disponível e cache offline não implementado');
-  }, []);
+    const now = new Date();
+    const id = `offline-${now.getTime()}`;
+    const novoPagamento: Pagamento = {
+      id,
+      receita_id: receitaId,
+      valor: pagamentoData.valor,
+      data_pagamento: pagamentoData.data_pagamento || now.toISOString(),
+      forma_pagamento: pagamentoData.forma_pagamento,
+      observacoes: pagamentoData.observacoes,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    } as Pagamento;
+    const arr = [novoPagamento, ...readOffline()];
+    writeOffline(arr);
+    updateState({ pagamentos: [novoPagamento, ...state.pagamentos] });
+    toast.success('Pagamento registrado offline.');
+    return novoPagamento;
+  }, [readOffline, writeOffline, state.pagamentos, updateState]);
 
   // Busca pagamentos por receita via API
   const buscarPagamentosPorReceita = useCallback(async (receitaId: string): Promise<Pagamento[]> => {
@@ -100,11 +131,11 @@ export const usePagamentos = () => {
 
   // Busca pagamentos offline (fallback)
   const buscarPagamentosOffline = useCallback(async (receitaId: string): Promise<Pagamento[]> => {
-    // TODO: Implementar cache local com IndexedDB/localStorage
-    console.log('Buscando pagamentos offline para receita:', receitaId);
-    updateState({ pagamentos: [], loading: false });
-    return [];
-  }, [updateState]);
+    const all = readOffline();
+    const list = all.filter(p => String(p.receita_id) === String(receitaId));
+    updateState({ pagamentos: list, loading: false });
+    return list;
+  }, [readOffline, updateState]);
 
   // Cancela um pagamento via API (não suportado: degrada para offline)
   const cancelarPagamento = useCallback(async (pagamentoId: string): Promise<void> => {
@@ -132,22 +163,30 @@ export const usePagamentos = () => {
 
   // Cancela pagamento offline (fallback)
   const cancelarPagamentoOffline = useCallback(async (pagamentoId: string): Promise<void> => {
-    // TODO: Implementar cache local para remoção offline
-    console.log('Tentativa de cancelamento offline:', pagamentoId);
-    throw new Error('API não disponível e cache offline não implementado');
-  }, []);
+    const remaining = readOffline().filter(p => p.id !== pagamentoId);
+    writeOffline(remaining);
+    updateState({ pagamentos: state.pagamentos.filter(p => p.id !== pagamentoId), loading: false });
+    toast.success('Pagamento cancelado offline.');
+  }, [readOffline, writeOffline, state.pagamentos, updateState]);
 
   // Busca estatísticas offline (fallback)
   const buscarEstatisticasOffline = useCallback(async (): Promise<PagamentoStats> => {
+    const all = readOffline();
+    const total_pagamentos = all.length;
+    const valor_total_pago = all.reduce((sum, p) => sum + (p.valor || 0), 0);
+    const today = new Date().toISOString().slice(0, 10);
+    const todayList = all.filter(p => (p.data_pagamento || '').slice(0,10) === today);
+    const pagamentos_hoje = todayList.length;
+    const valor_pago_hoje = todayList.reduce((sum, p) => sum + (p.valor || 0), 0);
     const stats: PagamentoStats = {
-      total_pagamentos: 0,
-      valor_total_pago: 0,
-      pagamentos_hoje: 0,
-      valor_pago_hoje: 0,
+      total_pagamentos,
+      valor_total_pago,
+      pagamentos_hoje,
+      valor_pago_hoje,
     };
     updateState({ stats });
     return stats;
-  }, [updateState]);
+  }, [readOffline, updateState]);
 
   // Busca estatísticas de pagamentos via API (não suportado: retorna estatísticas vazias)
   const buscarEstatisticas = useCallback(async (): Promise<PagamentoStats> => {
