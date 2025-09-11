@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de perfil do usuário
-// Data: 05-09-2025
+// Data: 11-09-2025
 // MIT License
 
 import React, { useEffect, useState } from 'react';
@@ -151,13 +151,27 @@ const Perfil: React.FC = () => {
           documento: prev.documento || (meta.documento ?? ''),
         }));
         const avatarPath = (user.user_metadata as any)?.avatar_path as string | undefined;
+        const avatarBucket = (user.user_metadata as any)?.avatar_bucket as ('avatars' | 'signatures' | string | undefined);
         if (avatarPath) {
-          // Tenta no bucket 'avatars' e faz fallback para 'signatures'
-          const primary = await supabase.storage.from('avatars').createSignedUrl(avatarPath, 60 * 60);
-          let signedUrl = primary.data?.signedUrl ?? null;
-          if (!signedUrl) {
-            const fallback = await supabase.storage.from('signatures').createSignedUrl(avatarPath, 60 * 60);
-            signedUrl = fallback.data?.signedUrl ?? null;
+          let signedUrl: string | null = null;
+          if (avatarBucket) {
+            // Usa o bucket indicado no metadata para evitar 400 desnecessário
+            const res = await supabase.storage.from(avatarBucket).createSignedUrl(avatarPath, 60 * 60);
+            signedUrl = res.data?.signedUrl ?? null;
+            if (!signedUrl) {
+              // Backward-compat: tenta o outro bucket caso o metadata esteja desatualizado
+              const altBucket = avatarBucket === 'avatars' ? 'signatures' : 'avatars';
+              const resAlt = await supabase.storage.from(altBucket).createSignedUrl(avatarPath, 60 * 60);
+              signedUrl = resAlt.data?.signedUrl ?? null;
+            }
+          } else {
+            // Compat: usuários antigos sem avatar_bucket
+            const primary = await supabase.storage.from('avatars').createSignedUrl(avatarPath, 60 * 60);
+            signedUrl = primary.data?.signedUrl ?? null;
+            if (!signedUrl) {
+              const fallback = await supabase.storage.from('signatures').createSignedUrl(avatarPath, 60 * 60);
+              signedUrl = fallback.data?.signedUrl ?? null;
+            }
           }
           if (signedUrl) setProfile(prev => ({ ...prev, avatar: signedUrl }));
         }
@@ -193,23 +207,28 @@ const Perfil: React.FC = () => {
       const ext = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `${user.id}/avatar_${Date.now()}.${ext}`;
 
-      // Tenta bucket 'avatars' e faz fallback para 'signatures'
-      let { error: upErr } = await supabase.storage.from('avatars').upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
+      // Tenta bucket 'avatars' e, em caso de erro, usa 'signatures'
+      let targetBucket: 'avatars' | 'signatures' = 'avatars';
+      let { error: upErr } = await supabase.storage.from(targetBucket).upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
       if (upErr) {
-        const fallback = await supabase.storage.from('signatures').upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
+        targetBucket = 'signatures';
+        const fallback = await supabase.storage.from(targetBucket).upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
         upErr = fallback.error ?? null;
       }
       if (upErr) throw upErr;
 
-      const { error: metaErr } = await supabase.auth.updateUser({ data: { avatar_path: path } });
+      // Persistir bucket + path no user_metadata para leituras futuras
+      const { error: metaErr } = await supabase.auth.updateUser({ data: { avatar_path: path, avatar_bucket: targetBucket } });
       if (metaErr) throw metaErr;
 
-      // Gera URL assinada a partir de 'avatars' ou, se não existir, 'signatures'
-      const signedPrimary = await supabase.storage.from('avatars').createSignedUrl(path, 60 * 60);
-      let signedUrl = signedPrimary.data?.signedUrl ?? null;
+      // Gera URL assinada usando o bucket efetivo
+      const signedRes = await supabase.storage.from(targetBucket).createSignedUrl(path, 60 * 60);
+      let signedUrl = signedRes.data?.signedUrl ?? null;
       if (!signedUrl) {
-        const signedFallback = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
-        signedUrl = signedFallback.data?.signedUrl ?? null;
+        // Tenta o outro bucket somente por compatibilidade
+        const altBucket = targetBucket === 'avatars' ? 'signatures' : 'avatars';
+        const alt = await supabase.storage.from(altBucket).createSignedUrl(path, 60 * 60);
+        signedUrl = alt.data?.signedUrl ?? null;
       }
       if (signedUrl) setProfile(prev => ({ ...prev, avatar: signedUrl }));
     } catch (e) {

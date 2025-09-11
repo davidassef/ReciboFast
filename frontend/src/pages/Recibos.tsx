@@ -176,6 +176,12 @@ const Recibos: React.FC = () => {
   const [showSignCanvas, setShowSignCanvas] = useState<false | 'novo' | 'edit'>(false);
   const [canvasKey, setCanvasKey] = useState<number>(0);
 
+  // Exclusão segura com confirmação de senha
+  const [showDeleteRecibo, setShowDeleteRecibo] = useState(false);
+  const [deleteTargetRecibo, setDeleteTargetRecibo] = useState<Recibo | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Bloqueia scroll do body/html quando qualquer modal desta página estiver aberto
   useEffect(() => {
     const anyModalOpen = showNovoRecibo || showViewRecibo || showEditRecibo || showDeleteRecibo || !!showSignCanvas;
@@ -245,11 +251,6 @@ const Recibos: React.FC = () => {
     };
   }, [showSignCanvas, canvasKey]);
 
-  // Exclusão segura com confirmação de senha
-  const [showDeleteRecibo, setShowDeleteRecibo] = useState(false);
-  const [deleteTargetRecibo, setDeleteTargetRecibo] = useState<Recibo | null>(null);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   // Tombstones de exclusão para persistir removidos mesmo com merge remoto
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
@@ -1332,9 +1333,8 @@ setEditValorInput('');
                       const isHeic = ext === 'heic' || ext === 'heif' || file.type === 'image/heic' || file.type === 'image/heif';
                       if (isHeic) {
                         try {
-                          const heic2any = await import('heic2any');
-                          // @ts-ignore
-                          const conv = await (heic2any as any)({ blob: file, toType: 'image/jpeg' });
+                          const heic2any = (await import('heic2any')).default as any;
+                          const conv = await heic2any({ blob: file, toType: 'image/jpeg' });
                           const blob: Blob = Array.isArray(conv) ? conv[0] : conv;
                           uploadFile = new File([blob], (file.name.replace(/\.[^.]+$/, '')||'assinatura')+'.jpg', { type: 'image/jpeg' });
                         } catch {}
