@@ -925,11 +925,12 @@ setEditValorInput('');
       {showNovoRecibo && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowNovoRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Novo Recibo</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <form className="space-y-4" onSubmit={handleCreateRecibo}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
@@ -1174,6 +1175,7 @@ setEditValorInput('');
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Criar</button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
@@ -1184,11 +1186,12 @@ setEditValorInput('');
       {showViewRecibo && reciboSelecionado && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowViewRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">{reciboSelecionado.numero}</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <div className="space-y-2 text-sm text-gray-700">
               <div className="flex justify-between"><span className="text-gray-500">Cliente</span><span className="font-medium">{reciboSelecionado.cliente}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Valor</span><span className="font-medium">R$ {reciboSelecionado.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
@@ -1200,6 +1203,7 @@ setEditValorInput('');
                 <div className="text-gray-500">Descrição</div>
                 <div className="mt-1">{reciboSelecionado.descricao && reciboSelecionado.descricao.trim() ? reciboSelecionado.descricao : 'Não informado'}</div>
               </div>
+            </div>
             </div>
             <div className="flex items-center justify-between gap-3 mt-4">
               <label className="inline-flex items-center gap-2 text-sm text-gray-700">
@@ -1216,11 +1220,12 @@ setEditValorInput('');
       {showEditRecibo && reciboSelecionado && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Editar Recibo</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <form className="space-y-4" onSubmit={handleEditReciboSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
@@ -1476,6 +1481,7 @@ setEditValorInput('');
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Salvar</button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
