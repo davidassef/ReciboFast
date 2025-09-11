@@ -107,21 +107,27 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Buscar no schema atual rf_signatures
-    const { data: rfRows, error: rfErr } = await supabase
-      .from('rf_signatures')
-      .select('id, file_name, file_path, created_at')
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: false });
-    if (rfErr) throw new Error(`Erro ao buscar assinaturas: ${rfErr.message}`);
+    // Buscar no schema atual rf_signatures (tolerante a ausência)
+    let rfRows: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('rf_signatures')
+        .select('id, file_name, file_path, created_at')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+      if (!error && Array.isArray(data)) rfRows = data as any[];
+    } catch {}
 
-    // Buscar no schema legado signatures (se existir)
-    const { data: legacyRows, error: legacyErr } = await supabase
-      .from('signatures')
-      .select('id, file_name, file_path, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    // Ignora erro do legado se tabela não existir; só considera quando vier dados
+    // Buscar no schema legado signatures (tolerante a ausência)
+    let legacyRows: any[] = [];
+    try {
+      const { data } = await supabase
+        .from('signatures')
+        .select('id, file_name, file_path, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (Array.isArray(data)) legacyRows = data as any[];
+    } catch {}
 
     // Mesclar por file_path para evitar duplicatas
     const byPath = new Map<string, any>();
