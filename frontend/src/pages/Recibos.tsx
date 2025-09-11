@@ -137,6 +137,17 @@ const Recibos: React.FC = () => {
         return;
       }
     } catch {}
+
+    // Se emitir em nome de outra pessoa, exigir nome, documento e assinatura do emissor
+    if (novoEmitirOutro) {
+      const issuerOk = (novoRecibo.issuerName || '').trim().length > 0;
+      const issuerDocOk = (novoRecibo.issuerDocumento || '').trim().length > 0;
+      const issuerSigOk = !!(novoRecibo.signatureDataUrl && novoRecibo.signatureDataUrl.trim());
+      if (!issuerOk || !issuerDocOk || !issuerSigOk) {
+        alert('Para emitir em nome de outra pessoa, informe Nome do emissor, Documento e a Assinatura do emissor (faça upload da imagem da assinatura).');
+        return;
+      }
+    }
     } catch (e) {
       console.warn('Falha ao processar recorrência local de contratos:', e);
     }
@@ -509,8 +520,8 @@ const Recibos: React.FC = () => {
       useLogo: novoRecibo.useLogo,
       logoDataUrl: novoRecibo.logoDataUrl,
       cpf: (novoRecibo.cpf && novoRecibo.cpf.trim()) ? novoRecibo.cpf : undefined,
-      signatureId: novoUseSignature ? resolvedSignatureId : undefined,
-      signatureDataUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
+      signatureId: novoEmitirOutro ? undefined : (novoUseSignature ? resolvedSignatureId : undefined),
+      signatureDataUrl: novoEmitirOutro ? (novoRecibo.signatureDataUrl || undefined) : (novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined),
       issuerName: novoEmitirOutro ? ((novoRecibo.issuerName || '').trim() || undefined) : (currentUserName || undefined),
       issuerDocumento: novoEmitirOutro ? ((novoRecibo.issuerDocumento || '').trim() || undefined) : undefined,
       contractId: novoRecibo.contractId,
@@ -894,6 +905,35 @@ setEditValorInput('');
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Assinatura do emissor (imagem)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          let uploadFile = file;
+                          const lower = (file.name||'').toLowerCase();
+                          const isHeic = file.type.includes('heic') || file.type.includes('heif') || lower.endsWith('.heic') || lower.endsWith('.heif');
+                          if (isHeic) {
+                            try {
+                              const heic2any = (await import('heic2any')).default as any;
+                              const conv = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+                              const blob: Blob = Array.isArray(conv) ? conv[0] : conv;
+                              uploadFile = new File([blob], (file.name.replace(/\.[^.]+$/, '')||'assinatura')+'.jpg', { type: 'image/jpeg' });
+                            } catch {}
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => setNovoRecibo(prev => ({ ...prev, signatureDataUrl: String(reader.result||'') }));
+                          reader.readAsDataURL(uploadFile);
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                      {novoRecibo.signatureDataUrl && (
+                        <img src={novoRecibo.signatureDataUrl} alt="Assinatura do emissor" className="h-10 object-contain border rounded bg-white px-2 mt-2" />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -981,13 +1021,13 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                 <textarea value={novoRecibo.descricao || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, descricao: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} />
               </div>
-              {/* Assinatura (selecionar da conta) */}
+              {/* Assinatura (selecionar da conta) - desabilitada ao emitir em nome de outra pessoa */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">Assinatura</label>
                 </div>
                 <div className="mt-1 flex items-center gap-3">
-                  <input id="novo-use-signature" type="checkbox" checked={novoUseSignature} onChange={(e) => { setNovoUseSignature(e.target.checked); if (!e.target.checked) setNovoRecibo(prev => ({ ...prev, signatureDataUrl: undefined })); }} className="h-4 w-4" />
+                  <input id="novo-use-signature" type="checkbox" checked={novoUseSignature && !novoEmitirOutro} onChange={(e) => { setNovoUseSignature(e.target.checked); if (!e.target.checked) setNovoRecibo(prev => ({ ...prev, signatureDataUrl: undefined })); }} className="h-4 w-4" disabled={novoEmitirOutro} />
                   <label htmlFor="novo-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
                   {signatureOptions.length > 0 ? (
                     <>
@@ -1000,7 +1040,7 @@ setEditValorInput('');
                           setNovoRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                        disabled={!novoUseSignature}
+                        disabled={!novoUseSignature || novoEmitirOutro}
                       >
                         <option value="">Selecione</option>
                         {signatureOptions.map(opt => (
@@ -1008,7 +1048,7 @@ setEditValorInput('');
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {novoUseSignature && (novoRecibo.signatureDataUrl || defaultSignatureUrl) && (
+                      {(!novoEmitirOutro && novoUseSignature) && (novoRecibo.signatureDataUrl || defaultSignatureUrl) && (
                         <img src={(novoRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
                       )}
                     </>
@@ -1017,7 +1057,7 @@ setEditValorInput('');
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
                       className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                      disabled={!novoUseSignature}
+                      disabled={!novoUseSignature || novoEmitirOutro}
                     >
                       <option value="">Selecione</option>
                       <option value="__create_sig__">Cadastrar Nova Assinatura</option>
@@ -1237,19 +1277,20 @@ setEditValorInput('');
                 </div>
               </div>
 
-              {/* Assinatura na edição (selecionar da conta) */}
+              {/* Assinatura na edição (selecionar da conta) - desabilitada ao emitir em nome de outra pessoa */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
                   <div className="mt-1 flex items-center gap-3">
                   <input
                     id="edit-use-signature"
                     type="checkbox"
-                    checked={editUseSignature}
+                    checked={editUseSignature && !editEmitirOutro}
                     onChange={(e) => {
                       setEditUseSignature(e.target.checked);
                       if (!e.target.checked) setEditRecibo(prev => ({ ...prev, signatureDataUrl: undefined }));
                     }}
                     className="h-4 w-4"
+                    disabled={editEmitirOutro}
                   />
                   <label htmlFor="edit-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
                   {signatureOptions.length > 0 ? (
@@ -1263,7 +1304,7 @@ setEditValorInput('');
                           setEditRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm"
-                        disabled={!editUseSignature}
+                        disabled={!editUseSignature || editEmitirOutro}
                       >
                         <option value="">Selecione</option>
                         {signatureOptions.map(opt => (
@@ -1271,7 +1312,7 @@ setEditValorInput('');
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {editUseSignature && (editRecibo.signatureDataUrl || defaultSignatureUrl) && (
+                      {(!editEmitirOutro && editUseSignature) && (editRecibo.signatureDataUrl || defaultSignatureUrl) && (
                         <img src={(editRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
                       )}
                     </>
@@ -1280,14 +1321,15 @@ setEditValorInput('');
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
                       className="px-3 py-2 border rounded-lg text-sm"
-                      disabled={!editUseSignature}
+                      disabled={!editUseSignature || editEmitirOutro}
                     >
                       <option value="">Selecione</option>
                       <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                     </select>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">A assinatura será exibida na impressão do recibo acima da linha de assinatura.</p>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">A assinatura será exibida na impressão do recibo acima da linha de assinatura.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
