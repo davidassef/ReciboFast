@@ -67,8 +67,9 @@ export const SignatureMethodModal: React.FC<SignatureMethodModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl max-h-[70vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-x-0 top-0 bottom-20 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={() => onOpenChange(false)} />
+      <div className="relative z-10 bg-white rounded-lg shadow-xl w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl max-h-[70vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">{title}</h2>

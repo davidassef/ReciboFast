@@ -131,7 +131,8 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-x-0 top-0 bottom-20 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={handleCancel} />
       <div className={`relative z-10 bg-white rounded-lg shadow-xl ${
         isMobile 
           ? 'w-full h-full max-w-none max-h-none' 

@@ -110,10 +110,10 @@ export const SignaturePreview: React.FC<SignaturePreviewProps> = ({
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center ${className}`}>
+    <div className={`fixed inset-x-0 top-0 bottom-20 z-50 flex items-center justify-center ${className}`}>
       {/* Overlay */}
       <div 
-        className="fixed inset-0 bg-black/50"
+        className="fixed inset-x-0 top-0 bottom-20 bg-black/50"
         onClick={onClose}
       />
 
