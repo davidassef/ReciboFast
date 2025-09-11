@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de gerenciamento de contratos
-// Data: 06-09-2025
+// Data: 11-09-2025
 // MIT License
 
 import React, { useEffect, useState } from 'react';
@@ -705,12 +705,13 @@ const Contratos: React.FC = () => {
 
       {showDeleteContrato && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={cancelDeleteContrato} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50" onClick={cancelDeleteContrato} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteContrato} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmar exclusão</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <p className="text-sm text-gray-600 mb-3">
               Esta ação é irreversível. Para excluir o contrato <strong>{deleteTargetContrato?.numero}</strong>, confirme sua senha.
             </p>
@@ -722,7 +723,8 @@ const Contratos: React.FC = () => {
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
             />
             {deleteErrorContrato && <div className="text-sm text-red-600 mb-2">{deleteErrorContrato}</div>}
-            <div className="flex justify-end gap-2">
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
               <button onClick={cancelDeleteContrato} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" disabled={deleteLoadingContrato}>Cancelar</button>
               <button onClick={confirmDeleteContrato} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50" disabled={deleteLoadingContrato || !deletePasswordContrato}>
                 {deleteLoadingContrato ? 'Excluindo...' : 'Excluir definitivamente'}
@@ -781,12 +783,13 @@ const Contratos: React.FC = () => {
       {/* Modal: Novo Contrato */}
       {showNovoContrato && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowNovoContrato(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowNovoContrato(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Novo Contrato</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <form className="space-y-4" onSubmit={handleCreateContrato}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
@@ -982,6 +985,7 @@ const Contratos: React.FC = () => {
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Criar</button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
@@ -989,12 +993,13 @@ const Contratos: React.FC = () => {
       {/* Modal: Visualizar Contrato */}
       {showViewContrato && contratoSelecionado && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowViewContrato(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowViewContrato(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">{contratoSelecionado.numero}</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <div className="space-y-2 text-sm text-gray-700">
               <div className="flex justify-between"><span className="text-gray-500">Cliente</span><span className="font-medium">{contratoSelecionado.cliente}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Valor</span><span className="font-medium">R$ {contratoSelecionado.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
@@ -1015,6 +1020,7 @@ const Contratos: React.FC = () => {
                 </div>
               )}
             </div>
+            </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => handleDownloadContrato(contratoSelecionado)} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Imprimir/Salvar</button>
             </div>
@@ -1025,12 +1031,13 @@ const Contratos: React.FC = () => {
       {/* Modal: Editar Contrato */}
       {showEditContrato && contratoSelecionado && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditContrato(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowEditContrato(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Editar Contrato</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
             <form className="space-y-4" onSubmit={handleEditContratoSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>

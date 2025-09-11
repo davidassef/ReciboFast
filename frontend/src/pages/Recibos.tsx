@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de gerenciamento de recibos
-// Data: 10-09-2025
+// Data: 11-09-2025
 // MIT License
 
 import React, { useEffect, useState } from 'react';
@@ -924,8 +924,8 @@ setEditValorInput('');
       {/* Modal: Novo Recibo */}
       {showNovoRecibo && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowNovoRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[70vh] flex flex-col overflow-hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowNovoRecibo(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1185,8 +1185,8 @@ setEditValorInput('');
       {/* Modal: Visualizar Recibo */}
       {showViewRecibo && reciboSelecionado && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowViewRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[70vh] flex flex-col overflow-hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowViewRecibo(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1219,8 +1219,8 @@ setEditValorInput('');
       {/* Modal: Editar Recibo */}
       {showEditRecibo && reciboSelecionado && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[70vh] flex flex-col overflow-hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowEditRecibo(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1707,8 +1707,8 @@ setEditValorInput('');
 
       {showDeleteRecibo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={cancelDeleteRecibo} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="fixed inset-0 bg-black/50" onClick={cancelDeleteRecibo} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full max-w-md p-6">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteRecibo} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1747,8 +1747,8 @@ setEditValorInput('');
       {/* Modal: Assinatura por touch */}
       {showSignCanvas && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSignCanvas(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowSignCanvas(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowSignCanvas(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>

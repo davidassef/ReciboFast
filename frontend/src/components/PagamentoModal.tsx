@@ -140,8 +140,8 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl max-h-[70vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -156,31 +156,32 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
           </button>
         </div>
 
-        {/* Informações da Renda */}
-        <div className="p-6 bg-gray-50 border-b">
-          <h3 className="font-medium text-gray-900 mb-2">{receita.titulo}</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">Valor Total:</span>
-              <p className="font-medium">{formatCurrency(receita.valor)}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Valor Pago:</span>
-              <p className="font-medium text-green-600">{formatCurrency(valorTotalPago)}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Valor Restante:</span>
-              <p className="font-medium text-blue-600">{formatCurrency(valorRestante)}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Cliente:</span>
-              <p className="font-medium">{receita.cliente_nome || 'N/A'}</p>
+        <div className="flex-1 overflow-y-auto">
+          {/* Informações da Renda */}
+          <div className="p-6 bg-gray-50 border-b">
+            <h3 className="font-medium text-gray-900 mb-2">{receita.titulo}</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">Valor Total:</span>
+                <p className="font-medium">{formatCurrency(receita.valor)}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Valor Pago:</span>
+                <p className="font-medium text-green-600">{formatCurrency(valorTotalPago)}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Valor Restante:</span>
+                <p className="font-medium text-blue-600">{formatCurrency(valorRestante)}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Cliente:</span>
+                <p className="font-medium">{receita.cliente_nome || 'N/A'}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Valor */}
           <div>
             <label htmlFor="valor" className="block text-sm font-medium text-gray-700 mb-2">
@@ -278,25 +279,26 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
             </div>
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting || isPagamentoCompleto || valorRestante <= 0}
-            >
-              {isSubmitting ? 'Registrando...' : 'Registrar Pagamento'}
-            </button>
-          </div>
-        </form>
+            {/* Botões */}
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting || isPagamentoCompleto || valorRestante <= 0}
+              >
+                {isSubmitting ? 'Registrando...' : 'Registrar Pagamento'}
+              </button>
+            </div>
+          </form>
+        </div>
 
         {/* Aviso se já está pago */}
         {isPagamentoCompleto && (

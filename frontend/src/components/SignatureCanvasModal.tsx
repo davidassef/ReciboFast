@@ -131,11 +131,11 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-lg shadow-xl overflow-hidden ${
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className={`relative z-10 bg-white rounded-lg shadow-xl ${
         isMobile 
           ? 'w-full h-full max-w-none max-h-none' 
-          : 'w-full max-w-2xl max-h-[90vh] overflow-y-auto'
+          : 'w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl max-h-[70vh] flex flex-col overflow-hidden'
       }`}>
         {/* Header */}
         <div className={`flex items-center justify-between border-b ${
@@ -159,7 +159,7 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4">
           {/* Instructions */}
           <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
             <p className="font-medium text-blue-800 mb-1">Como usar:</p>

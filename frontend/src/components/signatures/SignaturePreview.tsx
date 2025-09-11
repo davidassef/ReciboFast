@@ -37,7 +37,9 @@ export const SignaturePreview: React.FC<SignaturePreviewProps> = ({
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = signature.url;
-    link.download = `${signature.name}.${signature.file_type.split('/')[1]}`;
+    const urlPart = signature.url.split('?')[0] || '';
+    const ext = (urlPart.split('.').pop() || 'png').toLowerCase();
+    link.download = `${signature.name}.${ext}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -111,12 +113,12 @@ export const SignaturePreview: React.FC<SignaturePreviewProps> = ({
     <div className={`fixed inset-0 z-50 flex items-center justify-center ${className}`}>
       {/* Overlay */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-75 transition-opacity"
+        className="fixed inset-0 bg-black/50"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col">
+      <div className="relative z-10 bg-white rounded-lg shadow-xl w-full sm:max-w-md md:max-w-lg lg:max-w-2xl 2xl:max-w-4xl max-h-[70vh] mx-4 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -273,7 +275,7 @@ export const SignaturePreview: React.FC<SignaturePreviewProps> = ({
         </div>
 
         {/* Área de Visualização */}
-        <div className="flex-1 overflow-auto p-4 bg-gray-100">
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
           <div className="flex items-center justify-center min-h-full">
             <div 
               className="bg-white shadow-lg rounded-lg p-4 max-w-full max-h-full overflow-auto"
@@ -303,13 +305,19 @@ export const SignaturePreview: React.FC<SignaturePreviewProps> = ({
             <div>
               <span className="font-medium">Formato:</span>
               <br />
-              {signature.file_type.split('/')[1].toUpperCase()}
+              {(() => {
+                const urlPart = signature.url.split('?')[0] || '';
+                const ext = (urlPart.split('.').pop() || 'png').toUpperCase();
+                return ext;
+              })()}
             </div>
-            <div>
-              <span className="font-medium">Dimensões:</span>
-              <br />
-              {signature.width} × {signature.height}px
-            </div>
+            {Boolean((signature as any).width && (signature as any).height) && (
+              <div>
+                <span className="font-medium">Dimensões:</span>
+                <br />
+                {(signature as any).width} × {(signature as any).height}px
+              </div>
+            )}
             <div>
               <span className="font-medium">Criado em:</span>
               <br />
