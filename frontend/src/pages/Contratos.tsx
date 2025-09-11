@@ -1220,6 +1220,7 @@ const Contratos: React.FC = () => {
               </div>
             </form>
           </div>
+          </div>
         </div>
       )}
 
