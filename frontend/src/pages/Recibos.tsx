@@ -71,6 +71,94 @@ const getStatusColor = (status: Recibo['status']) => {
   }
   };
 
+  // Inicialização do canvas de assinatura quando o modal está aberto
+  useEffect(() => {
+    if (!showSignCanvas) return;
+    const canvas = document.getElementById('signature-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let drawing = false;
+    const DPR = window.devicePixelRatio || 1;
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * DPR;
+      canvas.height = rect.height * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#111827';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    };
+    resize();
+    const start = (x: number, y: number) => { drawing = true; ctx.beginPath(); ctx.moveTo(x, y); };
+    const move = (x: number, y: number) => { if (!drawing) return; ctx.lineTo(x, y); ctx.stroke(); };
+    const end = () => { drawing = false; };
+    const getPos = (e: MouseEvent | TouchEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if ('touches' in e) {
+        const t = e.touches[0] || (e as any).changedTouches?.[0];
+        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      }
+      const m = e as MouseEvent;
+      return { x: m.clientX - rect.left, y: m.clientY - rect.top };
+    };
+    const onDown = (e: any) => { e.preventDefault(); const p = getPos(e); start(p.x, p.y); };
+    const onMove = (e: any) => { e.preventDefault(); const p = getPos(e); move(p.x, p.y); };
+    const onUp = (e: any) => { e.preventDefault(); end(); };
+    window.addEventListener('resize', resize);
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchstart', onDown, { passive: false } as any);
+    canvas.addEventListener('touchmove', onMove, { passive: false } as any);
+    window.addEventListener('touchend', onUp, { passive: false } as any);
+    return () => {
+      window.removeEventListener('resize', resize);
+      canvas.removeEventListener('mousedown', onDown);
+      canvas.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      canvas.removeEventListener('touchstart', onDown as any);
+      canvas.removeEventListener('touchmove', onMove as any);
+      window.removeEventListener('touchend', onUp as any);
+    };
+  }, [showSignCanvas, canvasKey]);
+
+  // Validação CPF/CNPJ com checksum
+  const validateCPF = (cpf: string): boolean => {
+    const v = onlyDigits(cpf).padStart(11, '0');
+    if (v.length !== 11 || /^([0-9])\1+$/.test(v)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(v.charAt(i)) * (10 - i);
+    let rev = 11 - (sum % 11);
+    if (rev >= 10) rev = 0;
+    if (rev !== parseInt(v.charAt(9))) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(v.charAt(i)) * (11 - i);
+    rev = 11 - (sum % 11);
+    if (rev >= 10) rev = 0;
+    return rev === parseInt(v.charAt(10));
+  };
+
+  const validateCNPJ = (cnpj: string): boolean => {
+    const v = onlyDigits(cnpj).padStart(14, '0');
+    if (v.length !== 14 || /^([0-9])\1+$/.test(v)) return false;
+    const calc = (base: number) => {
+      let size = base - 7, pos = base - 8, sum = 0;
+      for (let i = 0; i < base - 1; i++) {
+        sum += parseInt(v.charAt(i)) * size--;
+        if (size < 2) size = 9;
+      }
+      let result = sum % 11;
+      return (result < 2) ? 0 : 11 - result;
+    };
+    const d1 = calc(13);
+    if (d1 !== parseInt(v.charAt(12))) return false;
+    const d2 = calc(14);
+    return d2 === parseInt(v.charAt(13));
+  };
+
   // Helper simples para detectar UUIDs
   const isUUID = (v: string | undefined | null) => !!v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(v);
 
@@ -128,26 +216,6 @@ const Recibos: React.FC = () => {
           return Array.from(byId.values()).sort((a,b) => (b.dataEmissao || '').localeCompare(a.dataEmissao || ''));
         });
       }
-    // Exigir nome completo no Perfil quando não emitir em nome de outra pessoa
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const userName = ((user?.user_metadata as any)?.name || '').toString().trim();
-      if (!novoEmitirOutro && !userName) {
-        alert('Para gerar o recibo, preencha seu Nome completo no Perfil ou marque "Emitir em nome de outra pessoa" e informe os dados do emissor.');
-        return;
-      }
-    } catch {}
-
-    // Se emitir em nome de outra pessoa, exigir nome, documento e assinatura do emissor
-    if (novoEmitirOutro) {
-      const issuerOk = (novoRecibo.issuerName || '').trim().length > 0;
-      const issuerDocOk = (novoRecibo.issuerDocumento || '').trim().length > 0;
-      const issuerSigOk = !!(novoRecibo.signatureDataUrl && novoRecibo.signatureDataUrl.trim());
-      if (!issuerOk || !issuerDocOk || !issuerSigOk) {
-        alert('Para emitir em nome de outra pessoa, informe Nome do emissor, Documento e a Assinatura do emissor (faça upload da imagem da assinatura).');
-        return;
-      }
-    }
     } catch (e) {
       console.warn('Falha ao processar recorrência local de contratos:', e);
     }
@@ -192,6 +260,9 @@ const Recibos: React.FC = () => {
   // Controle de "Emitir em nome de outra pessoa"
   const [novoEmitirOutro, setNovoEmitirOutro] = useState<boolean>(false);
   const [editEmitirOutro, setEditEmitirOutro] = useState<boolean>(false);
+  // Assinatura por touch (canvas)
+  const [showSignCanvas, setShowSignCanvas] = useState<false | 'novo' | 'edit'>(false);
+  const [canvasKey, setCanvasKey] = useState<number>(0);
 
   // Exclusão segura com confirmação de senha
   const [showDeleteRecibo, setShowDeleteRecibo] = useState(false);
@@ -675,6 +746,19 @@ resolvedSignatureUrl = preview.url;
 console.warn('Não foi possível resolver assinatura padrão por caminho (edição):', err);
 }
 }
+// Se editar para emissor alternativo, exigir documento válido e assinatura
+if (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) {
+const issuerName = (editRecibo.issuerName || reciboSelecionado.issuerName || '').trim();
+const issuerDoc = (editRecibo.issuerDocumento || reciboSelecionado.issuerDocumento || '').trim();
+const issuerDocDigits = onlyDigits(issuerDoc);
+const issuerDocOk = issuerDocDigits.length === 11 ? validateCPF(issuerDoc) : issuerDocDigits.length === 14 ? validateCNPJ(issuerDoc) : false;
+const sigOk = !!((editRecibo.signatureDataUrl || reciboSelecionado.signatureDataUrl || '').trim());
+if (!issuerName || !issuerDocOk || !sigOk) {
+alert('Para emitir em nome de outra pessoa, informe Nome do emissor, Documento válido (CPF/CNPJ) e a Assinatura do emissor.');
+return;
+}
+}
+
 setRecibos(prev => prev.map(r => r.id === reciboSelecionado.id ? {
 ...r,
 numero: (editRecibo.numero || r.numero)!,
@@ -687,8 +771,8 @@ formaPagamento: editRecibo.formaPagamento ?? r.formaPagamento,
 useLogo: typeof editRecibo.useLogo === 'boolean' ? editRecibo.useLogo : r.useLogo,
 logoDataUrl: editRecibo.logoDataUrl ?? r.logoDataUrl,
 cpf: typeof editRecibo.cpf === 'string' ? editRecibo.cpf : r.cpf,
-signatureId: editUseSignature ? (resolvedSignatureId ?? undefined) : undefined,
-signatureDataUrl: editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined,
+signatureId: (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) ? undefined : (editUseSignature ? (resolvedSignatureId ?? undefined) : undefined),
+signatureDataUrl: (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) ? (editRecibo.signatureDataUrl ?? r.signatureDataUrl) : (editUseSignature ? (resolvedSignatureUrl ?? defaultSignatureUrl ?? undefined) : undefined),
 issuerName: (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) ? (editRecibo.issuerName || r.issuerName) : undefined,
 issuerDocumento: (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) ? (editRecibo.issuerDocumento || r.issuerDocumento) : undefined,
 } : r));
@@ -930,6 +1014,9 @@ setEditValorInput('');
                         }}
                         className="w-full px-3 py-2 border rounded-lg"
                       />
+                      <div className="mt-2">
+                        <button type="button" onClick={() => { setShowSignCanvas('novo'); setCanvasKey(k => k + 1); }} className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">Assinar no touch</button>
+                      </div>
                       {novoRecibo.signatureDataUrl && (
                         <img src={novoRecibo.signatureDataUrl} alt="Assinatura do emissor" className="h-10 object-contain border rounded bg-white px-2 mt-2" />
                       )}
@@ -1048,7 +1135,7 @@ setEditValorInput('');
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {(!novoEmitirOutro && novoUseSignature) && (novoRecibo.signatureDataUrl || defaultSignatureUrl) && (
+                      {(novoRecibo.signatureDataUrl || defaultSignatureUrl) && (
                         <img src={(novoRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
                       )}
                     </>
@@ -1598,6 +1685,41 @@ setEditValorInput('');
             <CreditCard className="w-12 h-12 mx-auto mb-4" />
             <p className="text-lg font-medium">Nenhum recibo encontrado</p>
             <p className="text-sm">Tente ajustar os filtros ou criar um novo recibo.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Assinatura por touch */}
+      {showSignCanvas && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSignCanvas(false)} />
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
+            <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowSignCanvas(false)} aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Assinar no touch</h3>
+            <div className="border rounded-lg bg-white">
+              <div className="h-64">
+                <canvas id="signature-canvas" key={canvasKey} className="w-full h-full" />
+              </div>
+            </div>
+            <div className="flex justify-between gap-2 mt-4">
+              <button type="button" onClick={() => setCanvasKey(k => k + 1)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Limpar</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowSignCanvas(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
+                <button type="button" onClick={() => {
+                  const canvas = document.getElementById('signature-canvas') as HTMLCanvasElement | null;
+                  if (!canvas) return;
+                  const dataUrl = canvas.toDataURL('image/png');
+                  if (showSignCanvas === 'novo') {
+                    setNovoRecibo(prev => ({ ...prev, signatureDataUrl: dataUrl }));
+                  } else {
+                    setEditRecibo(prev => ({ ...prev, signatureDataUrl: dataUrl }));
+                  }
+                  setShowSignCanvas(false);
+                }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Usar</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
