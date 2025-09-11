@@ -114,10 +114,22 @@ export const generateRecurringReceipts = (
 
   for (const c of contratos) {
     if (!c.recurrenceEnabled || !c.recurrenceDay) continue;
-    const recurrenceDay = Math.max(1, Math.min(28, Number(c.recurrenceDay)));
+    const requested = Math.max(1, Math.min(31, Number(c.recurrenceDay)));
     const year = today.getFullYear();
     const month = today.getMonth();
-    const target = new Date(year, month, recurrenceDay);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    // Regra: permitir 1–31. Se mês não tem 31 e usuário escolheu 31, cair para 30; se ainda não couber, cair para 28.
+    // Em fevereiro, qualquer escolha acima de 28 cai para 28 (independente de ano bissexto).
+    let effectiveDay = requested;
+    if (requested > 28) {
+      if (daysInMonth >= 30) {
+        effectiveDay = Math.min(requested, 30);
+      } else {
+        effectiveDay = 28; // fevereiro
+      }
+    }
+    // Para demais casos (<=28), mantém o valor solicitado
+    const target = new Date(year, month, effectiveDay);
     const diffDays = Math.floor((+target - +today) / ONE_DAY);
     if (diffDays < 0 || diffDays > 10) continue; // janela 0..10 dias
 

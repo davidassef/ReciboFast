@@ -8,6 +8,7 @@ import { SignatureCanvasData, Signature } from '../types/signature';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
+import Modal from './ui/Modal';
 
 export interface SignatureCanvasModalProps {
   open: boolean;
@@ -128,49 +129,53 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
     }
   }, [showConfirmClear]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-x-0 top-0 bottom-20 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={handleCancel} />
-      <div className={`relative z-10 bg-white rounded-lg shadow-xl ${
-        isMobile 
-          ? 'w-full h-full max-w-none max-h-none' 
+    <Modal
+      open={open}
+      onOpenChange={(o) => { if (!o) handleCancel(); else onOpenChange(o); }}
+      avoidTabs
+      closeOnOverlayClick
+      closeOnEsc
+      ariaLabel={title}
+      className={
+        isMobile
+          ? 'w-full h-full max-w-none max-h-none'
           : 'w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl max-h-[70vh] flex flex-col overflow-hidden'
+      }
+    >
+      {/* Header */}
+      <div className={`flex items-center justify-between border-b ${
+        isMobile ? 'p-2' : 'p-6 pb-4'
       }`}>
-        {/* Header */}
-        <div className={`flex items-center justify-between border-b ${
-          isMobile ? 'p-2' : 'p-6 pb-4'
-        }`}>
-          <h2 className={`font-semibold ${
-            isMobile ? 'text-base' : 'text-lg'
-          } text-gray-900`}>
-            {isMobile ? 'Assinatura Digital' : title}
-          </h2>
-          <button
-            onClick={handleCancel}
-            className={`p-0 hover:bg-gray-100 rounded-full transition-colors ${
-              isMobile ? 'h-8 w-8' : 'h-6 w-6'
-            }`}
-            disabled={isSaving}
-          >
-            <X className={`${
-              isMobile ? 'h-5 w-5' : 'h-4 w-4'
-            }`} />
-          </button>
-        </div>
+        <h2 className={`font-semibold ${
+          isMobile ? 'text-base' : 'text-lg'
+        } text-gray-900`}>
+          {isMobile ? 'Assinatura Digital' : title}
+        </h2>
+        <button
+          onClick={handleCancel}
+          className={`p-0 hover:bg-gray-100 rounded-full transition-colors ${
+            isMobile ? 'h-8 w-8' : 'h-6 w-6'
+          }`}
+          disabled={isSaving}
+        >
+          <X className={`${
+            isMobile ? 'h-5 w-5' : 'h-4 w-4'
+          }`} />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4">
-          {/* Instructions */}
-          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <p className="font-medium text-blue-800 mb-1">Como usar:</p>
-            <ul className="text-blue-700 space-y-1">
-              <li>• Use o mouse ou toque na tela para desenhar sua assinatura</li>
-              <li>• Ajuste a espessura e cor do traço conforme necessário</li>
-              <li>• Use os botões Desfazer/Refazer para corrigir erros</li>
-              <li>• Clique em Salvar quando estiver satisfeito com o resultado</li>
-            </ul>
-          </div>
+      <div className="flex-1 overflow-y-auto space-y-4">
+        {/* Instructions */}
+        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <p className="font-medium text-blue-800 mb-1">Como usar:</p>
+          <ul className="text-blue-700 space-y-1">
+            <li>• Use o mouse ou toque na tela para desenhar sua assinatura</li>
+            <li>• Ajuste a espessura e cor do traço conforme necessário</li>
+            <li>• Use os botões Desfazer/Refazer para corrigir erros</li>
+            <li>• Clique em Salvar quando estiver satisfeito com o resultado</li>
+          </ul>
+        </div>
 
           {/* Progress Bar */}
           {isSaving && uploadProgress > 0 && (
@@ -265,8 +270,7 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

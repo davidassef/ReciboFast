@@ -47,8 +47,9 @@ export class SignatureService {
     if (!user) throw new Error('Usuário não autenticado');
 
     // Normalizar entrada
-    const file: File = signatureData instanceof File ? signatureData : signatureData.file;
-    const isDefault: boolean = signatureData instanceof File ? false : !!signatureData.is_default;
+    const isForm = !(signatureData instanceof File);
+    const file: File = isForm ? (signatureData as SignatureUpload).file : (signatureData as File);
+    const isDefault: boolean = isForm ? !!(signatureData as SignatureUpload).is_default : false;
 
     // Validar arquivo
     const validation = this.validateSignatureFile(file);
@@ -97,6 +98,15 @@ export class SignatureService {
       throw new Error(`Erro ao salvar assinatura: ${dbError.message}`);
     }
 
+    // Se um nome amigável foi fornecido, tenta atualizar (ignora se coluna não existir)
+    if (isForm && (signatureData as SignatureUpload).name) {
+      try {
+        await this.updateSignatureName(signature.id, (signatureData as SignatureUpload).name);
+      } catch {
+        // Ignora falha de coluna inexistente
+      }
+    }
+
     return signature;
   }
 
@@ -107,16 +117,23 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Buscar no schema atual rf_signatures (tolerante a ausência)
+    // Buscar no schema atual rf_signatures tentando incluir file_name; fallback se coluna não existir
     let rfRows: any[] = [];
     try {
-      const { data, error } = await supabase
+      let resp = await supabase
         .from('rf_signatures')
-        // Não selecionar file_name para compatibilidade com bancos ainda sem a coluna
-        .select('id, file_path, created_at')
+        .select('id, file_path, file_name, created_at')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
-      if (!error && Array.isArray(data)) rfRows = data as any[];
+      if (resp.error) {
+        // Fallback compatível: sem file_name
+        resp = await supabase
+          .from('rf_signatures')
+          .select('id, file_path, created_at')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false });
+      }
+      if (!resp.error && Array.isArray(resp.data)) rfRows = resp.data as any[];
     } catch {}
 
     // Buscar no schema legado signatures (tolerante a ausência)
@@ -161,8 +178,8 @@ export class SignatureService {
           publicUrl = urlData.publicUrl;
         }
 
-        const baseFromPath = signature.file_path.split('/').pop()?.replace(/\.[^/.]+$/, '');
-        const displayName = signature.file_name || baseFromPath || 'Assinatura';
+        const fileNameWithExt = signature.file_path.split('/').pop() || 'assinatura.png';
+        const displayName = signature.file_name || fileNameWithExt;
 
         return {
           id: signature.id,

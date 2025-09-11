@@ -219,6 +219,21 @@ const Contratos: React.FC = () => {
   const [deleteLoadingContrato, setDeleteLoadingContrato] = useState(false);
   const [deleteErrorContrato, setDeleteErrorContrato] = useState<string | null>(null);
 
+  // Bloqueia scroll do body/html quando qualquer modal está aberto
+  useEffect(() => {
+    const anyModalOpen = showNovoContrato || showViewContrato || showEditContrato || showDeleteContrato;
+    if (anyModalOpen) {
+      const origBody = document.body.style.overflow;
+      const origHtml = document.documentElement.style.overflow;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = origBody;
+        document.documentElement.style.overflow = origHtml;
+      };
+    }
+  }, [showNovoContrato, showViewContrato, showEditContrato, showDeleteContrato]);
+
   // Helpers CPF/CNPJ
   const onlyDigits = (v: string) => (v || '').replace(/\D/g, '');
   const formatCPF = (digits: string) => {
@@ -381,7 +396,7 @@ const Contratos: React.FC = () => {
         issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
         issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined,
         recurrenceEnabled: !!novoContrato.recurrenceEnabled,
-        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
+        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
       });
       const novo: Contrato = {
         id: created.id,
@@ -401,7 +416,7 @@ const Contratos: React.FC = () => {
         issuerName: created.issuerName || (novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined),
         issuerDocumento: created.issuerDocumento || (novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined),
         recurrenceEnabled: !!created.recurrenceEnabled,
-        recurrenceDay: created.recurrenceDay || ((typeof novoContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, novoContrato.recurrenceDay as number)) : undefined)
+        recurrenceDay: created.recurrenceDay || ((typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined)
       };
       setContratos(prev => [novo, ...prev]);
     } catch (err) {
@@ -424,7 +439,7 @@ const Contratos: React.FC = () => {
         issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
         issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined,
         recurrenceEnabled: !!novoContrato.recurrenceEnabled,
-        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
+        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
       };
       setContratos(prev => [novo, ...prev]);
     }
@@ -586,7 +601,7 @@ const Contratos: React.FC = () => {
         issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || contratoSelecionado.issuerName) : undefined,
         issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || contratoSelecionado.issuerDocumento) : undefined,
         recurrenceEnabled: !!editContrato.recurrenceEnabled,
-        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, editContrato.recurrenceDay as number)) : contratoSelecionado.recurrenceDay
+        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : contratoSelecionado.recurrenceDay
       });
       setContratos(prev => prev.map(c => c.id === contratoSelecionado.id ? {
         ...c,
@@ -605,7 +620,7 @@ const Contratos: React.FC = () => {
         issuerName: updated.issuerName || ((editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined),
         issuerDocumento: updated.issuerDocumento || ((editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined),
         recurrenceEnabled: !!updated.recurrenceEnabled,
-        recurrenceDay: updated.recurrenceDay || ((typeof editContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay)
+        recurrenceDay: updated.recurrenceDay || ((typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay)
       } : c));
     } catch (err) {
       console.warn('Falha ao atualizar contrato no Supabase. Atualizando local.', err);
@@ -626,7 +641,7 @@ const Contratos: React.FC = () => {
         issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined,
         issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined,
         recurrenceEnabled: !!editContrato.recurrenceEnabled,
-        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(28, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay
+        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay
       } : c));
     }
     setShowEditContrato(false);
@@ -704,7 +719,7 @@ const Contratos: React.FC = () => {
       </div>
 
       {showDeleteContrato && (
-        <div className="fixed inset-x-0 top-0 bottom-20 z-50 flex items-start justify-center p-4 pt-10">
+        <div className="fixed inset-x-0 top-0 bottom-20 z-[70] flex items-start justify-center p-4 pt-10">
           <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={cancelDeleteContrato} />
           <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteContrato} aria-label="Fechar">
@@ -848,15 +863,15 @@ const Contratos: React.FC = () => {
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia do recebimento (1–28)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia do recebimento (1–31)</label>
                     <input
                       type="number"
                       min={1}
-                      max={28}
+                      max={31}
                       value={Number.isFinite(Number(novoContrato.recurrenceDay)) ? (novoContrato.recurrenceDay as number) : ''}
                       onChange={(e) => {
                         const n = parseInt(e.target.value || '0', 10);
-                        setNovoContrato(prev => ({ ...prev, recurrenceDay: isNaN(n) ? undefined : Math.min(28, Math.max(1, n)) }));
+                        setNovoContrato(prev => ({ ...prev, recurrenceDay: isNaN(n) ? undefined : Math.min(31, Math.max(1, n)) }));
                       }}
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={!novoContrato.recurrenceEnabled}

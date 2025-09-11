@@ -1,15 +1,15 @@
 // Autor: David Assef
-// Data: 20-01-2025
+// Data: 11-09-2025
 // Descrição: Componente para upload de assinaturas digitais
 // MIT License
 
 import React, { useState, useRef } from 'react';
 import { Upload, X, Check, AlertCircle } from 'lucide-react';
 import { SignatureService } from '../../services/signatureService';
-import type { SignatureUpload as SignatureUploadType, SignatureValidation } from '../../types/signatures';
+import type { Signature, SignatureValidation } from '../../types/signatures';
 
 interface SignatureUploadProps {
-  onUploadSuccess?: (signature: SignatureUploadType) => void;
+  onUploadSuccess?: (signature: Signature) => void;
   onUploadError?: (error: string) => void;
   maxFileSize?: number; // em MB
   acceptedFormats?: string[];
@@ -28,11 +28,11 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [validation, setValidation] = useState<SignatureValidation | null>(null);
+  const [customName, setCustomName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateFile = (file: File): SignatureValidation => {
     const errors: string[] = [];
-    const warnings: string[] = [];
 
     // Validar tamanho
     if (file.size > maxFileSize * 1024 * 1024) {
@@ -45,16 +45,13 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
     }
 
     // Validar nome do arquivo
-    if (file.name.length > 100) {
-      warnings.push('Nome do arquivo muito longo');
-    }
+    // Avisos não críticos removidos para simplificar tipagem
 
     return {
-      is_valid: errors.length === 0,
+      isValid: errors.length === 0,
       errors,
-      warnings,
-      file_size: file.size,
-      file_type: file.type
+      maxSize: maxFileSize * 1024 * 1024,
+      allowedTypes: acceptedFormats
     };
   };
 
@@ -62,7 +59,7 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
     const validation = validateFile(file);
     setValidation(validation);
 
-    if (!validation.is_valid) {
+    if (!validation.isValid) {
       onUploadError?.(validation.errors.join(', '));
       return;
     }
@@ -83,7 +80,8 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
     setUploading(true);
 
     try {
-      const uploadedSignature = await SignatureService.uploadSignature(file);
+      const nameToUse = (customName && customName.trim()) ? customName.trim() : file.name;
+      const uploadedSignature = await SignatureService.uploadSignature({ name: nameToUse, file, is_default: false });
       onUploadSuccess?.(uploadedSignature);
       
       // Limpar estado
@@ -93,6 +91,7 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      setCustomName('');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro no upload';
       onUploadError?.(errorMessage);
@@ -189,29 +188,35 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
             {/* Nome do Arquivo */}
             <p className="text-sm text-gray-600 truncate">{fileName}</p>
 
+            {/* Nome amigável (opcional) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nome da assinatura (opcional)</label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Ex.: Assinatura Principal"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={uploading}
+              />
+            </div>
+
             {/* Validação */}
-            {validation && (
+            {validation && validation.isValid && (
               <div className="text-sm">
-                {validation.warnings.length > 0 && (
-                  <div className="flex items-center gap-2 text-yellow-600 mb-2">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{validation.warnings.join(', ')}</span>
-                  </div>
-                )}
                 <div className="flex items-center gap-2 text-green-600">
                   <Check className="w-4 h-4" />
                   <span>Arquivo válido para upload</span>
                 </div>
               </div>
             )}
-
             {/* Botão de Upload */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleUpload();
               }}
-              disabled={uploading || !validation?.is_valid}
+              disabled={uploading || !validation?.isValid}
               className="
                 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors
@@ -245,6 +250,16 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
             <div className="text-xs text-gray-400">
               <p>Formatos aceitos: PNG, JPEG, JPG</p>
               <p>Tamanho máximo: {maxFileSize}MB</p>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={uploading}
+              >
+                <Upload className="w-4 h-4" /> Selecionar arquivo
+              </button>
             </div>
           </div>
         )}

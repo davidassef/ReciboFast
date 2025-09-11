@@ -4,6 +4,7 @@
 // MIT License
 
 import React, { useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 
 export interface ModalProps {
@@ -52,12 +53,15 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (open) {
       document.addEventListener('keydown', handleKeyDown);
-      // Evita scroll do body quando modal está aberto
-      const originalOverflow = document.body.style.overflow;
+      // Evita scroll do body/html quando modal está aberto (inclusive mobile)
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
       return () => {
         document.removeEventListener('keydown', handleKeyDown);
-        document.body.style.overflow = originalOverflow;
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
       };
     }
   }, [open, handleKeyDown]);
@@ -65,10 +69,10 @@ export const Modal: React.FC<ModalProps> = ({
   if (!open) return null;
 
   const areaClass = avoidTabs
-    ? 'fixed inset-x-0 top-0 bottom-20 z-50'
-    : 'fixed inset-0 z-50';
+    ? 'fixed inset-x-0 top-0 bottom-20 z-[70]'
+    : 'fixed inset-0 z-[70]';
 
-  return (
+  const modalNode = (
     <div className={cn(areaClass, 'flex items-center justify-center p-4', containerClassName)}>
       {/* Overlay */}
       <div
@@ -93,6 +97,8 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalNode, document.body);
 };
 
 export default Modal;

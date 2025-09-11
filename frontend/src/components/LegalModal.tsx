@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import Modal from './ui/Modal';
 
 interface LegalModalProps {
   isOpen: boolean;
@@ -14,10 +15,17 @@ interface LegalModalProps {
 }
 
 const LegalModal: React.FC<LegalModalProps> = ({ isOpen, title, onClose, children }) => {
-  if (!isOpen) return null;
   return (
-    <div className="fixed inset-x-0 top-0 bottom-20 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <Modal
+      open={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      avoidTabs
+      closeOnOverlayClick
+      closeOnEsc
+      ariaLabel={title}
+      className="w-full max-w-3xl rounded-2xl"
+    >
+      <div className="w-full bg-white rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h2 className="text-lg sm:text-xl font-semibold text-neutral-900">{title}</h2>
           <button
@@ -40,7 +48,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ isOpen, title, onClose, childre
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
