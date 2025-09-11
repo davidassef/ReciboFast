@@ -1,5 +1,5 @@
 // Autor: David Assef
-// Data: 06-09-2025
+// Data: 11-09-2025
 // Descrição: Serviço para gerenciamento de assinaturas digitais
 // MIT License
 
@@ -83,10 +83,10 @@ export class SignatureService {
       .from('rf_signatures')
       .insert({
         owner_id: user.id,
-        file_name: baseName,
         file_path: uploadData.path,
         file_size: file.size,
-        mime_type: file.type
+        // Compatível com CHECK (mime_type IS NULL OR mime_type = 'image/png') na migration 007
+        mime_type: file.type === 'image/png' ? 'image/png' : null
       })
       .select()
       .single();
@@ -112,7 +112,8 @@ export class SignatureService {
     try {
       const { data, error } = await supabase
         .from('rf_signatures')
-        .select('id, file_name, file_path, created_at')
+        // Não selecionar file_name para compatibilidade com bancos ainda sem a coluna
+        .select('id, file_path, created_at')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
       if (!error && Array.isArray(data)) rfRows = data as any[];
@@ -188,7 +189,8 @@ export class SignatureService {
 
     const { data: signature, error } = await supabase
       .from('rf_signatures')
-      .select('id, file_name, file_path, created_at')
+      // Compatível com esquemas sem file_name
+      .select('id, file_path, created_at')
       .eq('id', id)
       .eq('owner_id', user.id)
       .single();
@@ -219,7 +221,7 @@ export class SignatureService {
 
     return {
       id: signature.id,
-      name: signature.file_name || signature.file_path.split('/').pop() || 'Assinatura',
+      name: signature.file_path.split('/').pop() || 'Assinatura',
       url,
       is_default: false,
       file_size: 0,
@@ -237,7 +239,8 @@ export class SignatureService {
 
     const { data: signature, error } = await supabase
       .from('rf_signatures')
-      .select('id, file_name, file_path, created_at')
+      // Compatível com esquemas sem file_name
+      .select('id, file_path, created_at')
       .eq('owner_id', user.id)
       .eq('file_path', file_path)
       .single();
@@ -305,7 +308,7 @@ export class SignatureService {
       .from('rf_signatures')
       .select('file_path')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('owner_id', user.id)
       .single();
 
     if (fetchError) {
@@ -326,7 +329,7 @@ export class SignatureService {
       .from('rf_signatures')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('owner_id', user.id);
 
     if (dbError) {
       throw new Error(`Erro ao deletar assinatura: ${dbError.message}`);
@@ -340,29 +343,14 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data: signature, error } = await supabase
-      .from('rf_signatures')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_default', true)
-      .single();
-
-    if (error || !signature) {
+    // Agora o padrão é guardado no user_metadata.default_signature_path
+    const defaultPath = (user.user_metadata as any)?.default_signature_path as string | undefined;
+    if (!defaultPath) return null;
+    try {
+      return await this.getSignatureByPath(defaultPath);
+    } catch {
       return null;
     }
-
-    const { data: urlData } = supabase.storage
-      .from(this.BUCKET_NAME)
-      .getPublicUrl(signature.file_path);
-
-    return {
-      id: signature.id,
-      name: signature.name,
-      url: urlData.publicUrl,
-      is_default: signature.is_default,
-      file_size: signature.file_size,
-      created_at: signature.created_at
-    };
   }
 
   /**
@@ -380,14 +368,25 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { error } = await supabase
+    try {
+      const { error } = await supabase
       .from('rf_signatures')
       .update({ file_name: name })
       .eq('id', id)
       .eq('owner_id', user.id);
-
-    if (error) {
-      throw new Error(`Erro ao atualizar nome da assinatura: ${error.message}`);
+      if (error) {
+        // Se a coluna não existir neste ambiente, apenas ignore (compatibilidade)
+        if ((error as any).message?.toLowerCase().includes('column') && (error as any).message?.toLowerCase().includes('file_name')) {
+          return;
+        }
+        throw new Error(`Erro ao atualizar nome da assinatura: ${error.message}`);
+      }
+    } catch (err: any) {
+      // PostgREST pode responder 400 para coluna inexistente: trate como no-op
+      if (typeof err?.message === 'string' && err.message.toLowerCase().includes('column') && err.message.toLowerCase().includes('file_name')) {
+        return;
+      }
+      throw err;
     }
   }
 }
@@ -400,14 +399,15 @@ export const signatureService = {
     if (!user) throw new Error('Usuário não autenticado');
     const { data, error } = await supabase
       .from('rf_signatures')
-      .select('id, file_name, file_path, file_size, mime_type, created_at')
+      // Não selecionar file_name para compatibilidade
+      .select('id, file_path, file_size, mime_type, created_at')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw new Error(`Erro ao carregar assinaturas: ${error.message}`);
     return (data || []).map((s: any) => ({
       id: s.id,
       user_id: user.id,
-      name: s.file_name || (s.file_path?.split('/').pop() || 'Assinatura'),
+      name: (s.file_path?.split('/').pop() || 'Assinatura'),
       file_path: s.file_path,
       file_size: s.file_size || 0,
       mime_type: s.mime_type || 'image/png',
