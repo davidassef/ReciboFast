@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Upload, PenTool, X } from 'lucide-react';
 import { SignatureCreationMethod } from '../types/signature';
 import { cn } from '../lib/utils';
+import { Modal } from './ui/Modal';
 
 export interface SignatureMethodModalProps {
   open: boolean;
@@ -67,102 +68,99 @@ export const SignatureMethodModal: React.FC<SignatureMethodModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-20 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={() => onOpenChange(false)} />
-      <div className="relative z-10 bg-white rounded-lg shadow-xl w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl max-h-[70vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+    <Modal open={open} onOpenChange={onOpenChange} avoidTabs>
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b">
+        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <button
+          onClick={handleCancel}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+        {description && (
+          <p className="text-sm text-gray-600">
+            {description}
+          </p>
+        )}
+
+        <div className="grid gap-3">
+          {SIGNATURE_METHODS.map((method) => (
+            <button
+              key={method.type}
+              type="button"
+              onClick={() => handleMethodClick(method.type)}
+              disabled={!method.available}
+              className={cn(
+                'w-full p-4 border-2 rounded-lg transition-colors text-left',
+                selectedMethod === method.type
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50',
+                !method.available && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <div className="flex items-center space-x-3">
+                <div className={cn(
+                  'p-2 rounded-lg',
+                  method.type === 'canvas' ? 'bg-blue-100' : 'bg-green-100'
+                )}>
+                  {renderIcon(method.icon, cn(
+                    'h-5 w-5',
+                    method.type === 'canvas' ? 'text-blue-600' : 'text-green-600'
+                  ))}
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">{method.title}</div>
+                  <div className="text-sm text-gray-500">
+                    {method.description}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-3 pt-4 border-t">
           <button
+            type="button"
             onClick={handleCancel}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <X className="w-5 h-5" />
+            Cancelar
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={!selectedMethod}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Continuar
           </button>
         </div>
 
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-          {description && (
-            <p className="text-sm text-gray-600">
-              {description}
-            </p>
-          )}
-
-          <div className="grid gap-3">
-            {SIGNATURE_METHODS.map((method) => (
-              <button
-                key={method.type}
-                type="button"
-                onClick={() => handleMethodClick(method.type)}
-                disabled={!method.available}
-                className={cn(
-                  'w-full p-4 border-2 rounded-lg transition-colors text-left',
-                  selectedMethod === method.type
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50',
-                  !method.available && 'opacity-50 cursor-not-allowed'
-                )}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={cn(
-                    'p-2 rounded-lg',
-                    method.type === 'canvas' ? 'bg-blue-100' : 'bg-green-100'
-                  )}>
-                    {renderIcon(method.icon, cn(
-                      'h-5 w-5',
-                      method.type === 'canvas' ? 'text-blue-600' : 'text-green-600'
-                    ))}
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium">{method.title}</div>
-                    <div className="text-sm text-gray-500">
-                      {method.description}
-                    </div>
-                  </div>
+        {/* Method-specific hints */}
+        {selectedMethod && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="text-sm text-blue-800">
+              {selectedMethod === 'canvas' && (
+                <div>
+                  <strong>Dica:</strong> Use movimentos suaves e naturais. Você pode ajustar a espessura e cor do traço.
                 </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            
-            <button
-              type="button"
-              onClick={handleContinue}
-              disabled={!selectedMethod}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Continuar
-            </button>
-          </div>
-
-          {/* Method-specific hints */}
-          {selectedMethod && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm text-blue-800">
-                {selectedMethod === 'canvas' && (
-                  <div>
-                    <strong>Dica:</strong> Use movimentos suaves e naturais. Você pode ajustar a espessura e cor do traço.
-                  </div>
-                )}
-                {selectedMethod === 'upload' && (
-                  <div>
-                    <strong>Dica:</strong> Use uma imagem clara com boa iluminação. Formatos aceitos: PNG, JPG (máx. 2MB).
-                  </div>
-                )}
-              </div>
+              )}
+              {selectedMethod === 'upload' && (
+                <div>
+                  <strong>Dica:</strong> Use uma imagem clara com boa iluminação. Formatos aceitos: PNG, JPG (máx. 2MB).
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 };
 
