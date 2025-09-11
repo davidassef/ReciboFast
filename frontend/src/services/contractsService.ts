@@ -152,4 +152,18 @@ export const ContractsService = {
     const payerRel = Array.isArray((data as any).rf_payers) ? (data as any).rf_payers[0] : (data as any).rf_payers;
     return mapRowToUI(data, payerRel);
   },
+
+  async remove(id: string): Promise<boolean> {
+    const ownerId = await getUserId();
+    const { error } = await supabase
+      .from('rf_contracts')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', ownerId);
+    if (error) {
+      console.warn('Erro ao excluir contrato:', error.message);
+      return false;
+    }
+    return true;
+  }
 };

@@ -50,5 +50,20 @@ export const ReceiptsMinimalService = {
       return null;
     }
     return data as ReceiptMinimal;
+  },
+
+  async remove(id: string): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+    const { error } = await supabase
+      .from('rf_receipts')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', user.id);
+    if (error) {
+      console.warn('Erro ao excluir rf_receipts:', error.message);
+      return false;
+    }
+    return true;
   }
 };

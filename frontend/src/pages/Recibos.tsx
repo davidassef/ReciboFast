@@ -128,6 +128,15 @@ const Recibos: React.FC = () => {
           return Array.from(byId.values()).sort((a,b) => (b.dataEmissao || '').localeCompare(a.dataEmissao || ''));
         });
       }
+    // Exigir nome completo no Perfil quando não emitir em nome de outra pessoa
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userName = ((user?.user_metadata as any)?.name || '').toString().trim();
+      if (!novoEmitirOutro && !userName) {
+        alert('Para gerar o recibo, preencha seu Nome completo no Perfil ou marque "Emitir em nome de outra pessoa" e informe os dados do emissor.');
+        return;
+      }
+    } catch {}
     } catch (e) {
       console.warn('Falha ao processar recorrência local de contratos:', e);
     }
@@ -157,6 +166,7 @@ const Recibos: React.FC = () => {
   const [defaultLogoUrl, setDefaultLogoUrl] = useState<string | null>(null);
   const [defaultSignatureUrl, setDefaultSignatureUrl] = useState<string | null>(null);
   const [defaultSignaturePath, setDefaultSignaturePath] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string>('');
   // Opções armazenadas do usuário
   const [logoOptions, setLogoOptions] = useState<Array<{ path: string; url: string; name: string }>>([]);
   const [signatureOptions, setSignatureOptions] = useState<Array<{ id: string; url: string; name: string }>>([]);
@@ -272,6 +282,7 @@ const Recibos: React.FC = () => {
     const loadDefaultLogo = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUserName(((user?.user_metadata as any)?.name || '').toString());
         const path = (user?.user_metadata as any)?.default_logo_path as string | undefined;
         if (!path) {
           setDefaultLogoUrl(null);
@@ -500,7 +511,7 @@ const Recibos: React.FC = () => {
       cpf: (novoRecibo.cpf && novoRecibo.cpf.trim()) ? novoRecibo.cpf : undefined,
       signatureId: novoUseSignature ? resolvedSignatureId : undefined,
       signatureDataUrl: novoUseSignature ? (resolvedSignatureUrl || defaultSignatureUrl || undefined) : undefined,
-      issuerName: novoEmitirOutro ? ((novoRecibo.issuerName || '').trim() || undefined) : undefined,
+      issuerName: novoEmitirOutro ? ((novoRecibo.issuerName || '').trim() || undefined) : (currentUserName || undefined),
       issuerDocumento: novoEmitirOutro ? ((novoRecibo.issuerDocumento || '').trim() || undefined) : undefined,
       contractId: novoRecibo.contractId,
     };
@@ -569,6 +580,7 @@ h1{font-size:22px;letter-spacing:.5px;margin:0}
 </style>
 `;
 const dataBR = recibo.dataEmissao ? new Date(recibo.dataEmissao).toLocaleDateString('pt-BR') : '';
+const signerName = (recibo.issuerName && recibo.issuerName.trim()) || (currentUserName && currentUserName.trim()) || '';
 return `
 <html>
 <head><meta charset="utf-8">${style}<title>Recibo ${recibo.numero}</title></head>
@@ -592,7 +604,7 @@ ${dataBR ? `<div class="center" style="margin-top:28px">${dataBR}</div>` : ''}
 <div class="signature">
 ${recibo.signatureDataUrl ? `<img src="${recibo.signatureDataUrl}" alt="Assinatura" />` : ''}
 <div class="line"></div>
-<div class="muted" style="margin-top:8px">Assinatura</div>
+<div class="muted" style="margin-top:8px">Assinatura${signerName ? ` — ${signerName}` : ''}</div>
 </div>
 </div>
 </div>
@@ -704,7 +716,12 @@ setEditValorInput('');
       // Backend
       try {
         if (isUUID(deleteTargetRecibo.id)) {
-          await receiptsApi.remove(deleteTargetRecibo.id);
+          // Tenta apagar no Supabase (rf_receipts) primeiro
+          const ok = await ReceiptsMinimalService.remove(deleteTargetRecibo.id);
+          if (!ok) {
+            // Fallback: API backend
+            await receiptsApi.remove(deleteTargetRecibo.id);
+          }
         }
       } catch (apiErr) {
         console.warn('Falha ao excluir recibo no backend. Removendo localmente.', apiErr);
@@ -794,9 +811,9 @@ setEditValorInput('');
 
       {/* Modal: Novo Recibo */}
       {showNovoRecibo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowNovoRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1021,9 +1038,9 @@ setEditValorInput('');
 
       {/* Modal: Visualizar Recibo */}
       {showViewRecibo && reciboSelecionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowViewRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1053,9 +1070,9 @@ setEditValorInput('');
 
       {/* Modal: Editar Recibo */}
       {showEditRecibo && reciboSelecionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditRecibo(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>

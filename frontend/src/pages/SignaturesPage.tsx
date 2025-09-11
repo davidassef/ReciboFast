@@ -95,9 +95,23 @@ export const SignaturesPage: React.FC = () => {
     if (!file || !user?.id) return;
     try {
       setIsUploadingLogo(true);
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      // Converter HEIC/HEIF para JPEG automaticamente
+      let uploadFile: File = file;
+      const lowerName = (file.name || '').toLowerCase();
+      const isHeic = file.type.includes('heic') || file.type.includes('heif') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif');
+      if (isHeic) {
+        try {
+          const heic2any = (await import('heic2any')).default as any;
+          const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+          const blob: Blob = Array.isArray(converted) ? converted[0] : converted;
+          uploadFile = new File([blob], (file.name.replace(/\.[^.]+$/, '') || 'logo') + '.jpg', { type: 'image/jpeg' });
+        } catch (convErr) {
+          console.warn('Falha ao converter HEIC -> JPEG (logo), subindo arquivo original:', convErr);
+        }
+      }
+      const ext = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `${user.id}/branding/logo_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('signatures').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+      const { error: upErr } = await supabase.storage.from('signatures').upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
       if (upErr) throw upErr;
       await loadLogos();
       // Define como ativa imediatamente

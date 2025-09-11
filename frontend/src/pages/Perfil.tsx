@@ -136,11 +136,19 @@ const Perfil: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+        const meta: any = user.user_metadata || {};
         setProfile(prev => ({
           ...prev,
           id: user.id,
-          nome: prev.nome || (user.user_metadata?.name ?? ''),
+          nome: prev.nome || (meta.name ?? ''),
           email: prev.email || (user.email ?? ''),
+          telefone: prev.telefone || (meta.telefone ?? ''),
+          endereco: prev.endereco || (meta.endereco ?? ''),
+          cidade: prev.cidade || (meta.cidade ?? ''),
+          estado: prev.estado || (meta.estado ?? ''),
+          cep: prev.cep || (meta.cep ?? ''),
+          empresa: prev.empresa || (meta.empresa ?? ''),
+          documento: prev.documento || (meta.documento ?? ''),
         }));
         const avatarPath = (user.user_metadata as any)?.avatar_path as string | undefined;
         if (avatarPath) {
@@ -168,13 +176,27 @@ const Perfil: React.FC = () => {
       setAvatarUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      // Converter HEIC/HEIF para JPEG automaticamente
+      let uploadFile: File = file;
+      const lowerName = (file.name || '').toLowerCase();
+      const isHeic = file.type.includes('heic') || file.type.includes('heif') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif');
+      if (isHeic) {
+        try {
+          const heic2any = (await import('heic2any')).default as any;
+          const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+          const blob: Blob = Array.isArray(converted) ? converted[0] : converted;
+          uploadFile = new File([blob], (file.name.replace(/\.[^.]+$/, '') || 'avatar') + '.jpg', { type: 'image/jpeg' });
+        } catch (convErr) {
+          console.warn('Falha ao converter HEIC -> JPEG, tentando subir original:', convErr);
+        }
+      }
+      const ext = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `${user.id}/avatar_${Date.now()}.${ext}`;
 
       // Tenta bucket 'avatars' e faz fallback para 'signatures'
-      let { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+      let { error: upErr } = await supabase.storage.from('avatars').upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
       if (upErr) {
-        const fallback = await supabase.storage.from('signatures').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+        const fallback = await supabase.storage.from('signatures').upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: '3600', upsert: false });
         upErr = fallback.error ?? null;
       }
       if (upErr) throw upErr;
@@ -198,8 +220,8 @@ const Perfil: React.FC = () => {
     }
   };
 
-  const handleProfileSave = () => {
-    // Aqui seria feita a chamada para a API
+  const handleProfileSave = async () => {
+    // Persistir no user_metadata do Supabase Auth
     if (profile.documento) {
       const digits = onlyDigits(profile.documento);
       const valido = digits.length === 11 ? validateCPF(digits) : digits.length === 14 ? validateCNPJ(digits) : false;
@@ -210,8 +232,24 @@ const Perfil: React.FC = () => {
         return;
       }
     }
-    console.log('Salvando perfil:', profile);
-    setIsEditing(false);
+    try {
+      const payload: any = {
+        name: (profile.nome || '').trim(),
+        telefone: (profile.telefone || '').trim() || null,
+        empresa: (profile.empresa || '').trim() || null,
+        documento: (profile.documento || '').trim() || null,
+        endereco: (profile.endereco || '').trim() || null,
+        cidade: (profile.cidade || '').trim() || null,
+        estado: (profile.estado || '').trim() || null,
+        cep: (profile.cep || '').trim() || null,
+      };
+      const { error } = await supabase.auth.updateUser({ data: payload });
+      if (error) throw error;
+      setIsEditing(false);
+    } catch (e) {
+      console.error('Falha ao salvar perfil:', e);
+      alert('Não foi possível salvar seu perfil. Tente novamente.');
+    }
   };
 
   const handlePasswordChange = () => {

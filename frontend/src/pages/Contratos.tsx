@@ -663,7 +663,12 @@ const Contratos: React.FC = () => {
         setDeleteLoadingContrato(false);
         return;
       }
-      // Sem backend de contratos ainda: remove localmente
+      // Remoção persistente
+      try {
+        await ContractsService.remove(deleteTargetContrato.id);
+      } catch (e) {
+        console.warn('Falha ao excluir contrato remotamente, removendo localmente.', e);
+      }
       setContratos(prev => prev.filter(c => c.id !== deleteTargetContrato.id));
       setShowDeleteContrato(false);
       setDeleteTargetContrato(null);
@@ -699,9 +704,9 @@ const Contratos: React.FC = () => {
       </div>
 
       {showDeleteContrato && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={cancelDeleteContrato} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteContrato} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -775,9 +780,9 @@ const Contratos: React.FC = () => {
 
       {/* Modal: Novo Contrato */}
       {showNovoContrato && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowNovoContrato(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -983,9 +988,9 @@ const Contratos: React.FC = () => {
 
       {/* Modal: Visualizar Contrato */}
       {showViewContrato && contratoSelecionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowViewContrato(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1019,9 +1024,9 @@ const Contratos: React.FC = () => {
 
       {/* Modal: Editar Contrato */}
       {showEditContrato && contratoSelecionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditContrato(false)} />
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
