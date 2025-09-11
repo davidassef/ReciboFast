@@ -1,6 +1,6 @@
 // Autor: David Assef
 // Descrição: Página de gerenciamento de recibos
-// Data: 06-09-2025
+// Data: 10-09-2025
 // MIT License
 
 import React, { useEffect, useState } from 'react';
@@ -236,13 +236,21 @@ const Recibos: React.FC = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Tombstones de exclusão para persistir removidos mesmo com merge remoto
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('deleted_receipts');
+      if (raw) setDeletedIds(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   const filteredRecibos = recibos.filter(recibo => {
     const matchesSearch = recibo.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          recibo.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          recibo.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'todos' || recibo.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && !deletedIds.includes(recibo.id);
   });
 
   const totalRecibos = filteredRecibos.reduce((sum, recibo) => sum + recibo.valor, 0);
@@ -808,10 +816,10 @@ setEditValorInput('');
         setDeleteLoading(false);
         return;
       }
-      // Backend
+
       try {
-        if (isUUID(deleteTargetRecibo.id)) {
-          // Tenta apagar no Supabase (rf_receipts) primeiro
+        if (deleteTargetRecibo.id && isUUID(deleteTargetRecibo.id)) {
+          // Prioriza remover do Supabase (rf_receipts minimal)
           const ok = await ReceiptsMinimalService.remove(deleteTargetRecibo.id);
           if (!ok) {
             // Fallback: API backend
@@ -821,6 +829,15 @@ setEditValorInput('');
       } catch (apiErr) {
         console.warn('Falha ao excluir recibo no backend. Removendo localmente.', apiErr);
       }
+
+      // Marca tombstone para não reaparecer ao mesclar com dados remotos
+      const deletedId = deleteTargetRecibo.id;
+      setDeletedIds(prev => {
+        const next = prev.includes(deletedId) ? prev : [...prev, deletedId];
+        try { localStorage.setItem('deleted_receipts', JSON.stringify(next)); } catch {}
+        return next;
+      });
+
       setRecibos(prev => prev.filter(r => r.id !== deleteTargetRecibo.id));
       setShowDeleteRecibo(false);
       setDeleteTargetRecibo(null);

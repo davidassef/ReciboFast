@@ -38,6 +38,11 @@ export class ApiClient {
     options: RequestInit = {}
   ): Promise<{ data: T | null; error: string | null }> {
     try {
+      const isProd = (import.meta as any).env?.PROD;
+      // Em produção, se a base não for absoluta (sem VITE_API_BASE_URL), evita chamar e retornar HTML
+      if (isProd && this.baseURL.startsWith('/')) {
+        return { data: null, error: 'API backend não configurada em produção (defina VITE_API_BASE_URL).' };
+      }
       const token = await this.getAuthToken();
       
       const config: RequestInit = {

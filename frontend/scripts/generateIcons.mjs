@@ -13,8 +13,9 @@ try {
   sharp = (await import('sharp')).default;
 } catch {}
 try {
-  // Fallback: gerar PNGs via pngjs
-  PNG = (await import('pngjs')).PNG;
+  // Fallback: gerar PNGs via pngjs (tentar diferentes formatos de export)
+  const mod = await import('pngjs');
+  PNG = mod.PNG || (mod.default && (mod.default.PNG || mod.default)) || null;
 } catch {}
 
 const __filename = fileURLToPath(import.meta.url);
@@ -81,7 +82,7 @@ function writeIfNeeded(filePath, base64) {
       sharp = null; // força fallback abaixo
     }
   } 
-  if (!sharp && PNG) {
+  else if (!sharp && PNG) {
     // Fallback: gera PNGs sólidos válidos nas dimensões exatas usando pngjs
     const out192 = path.join(publicDir, 'pwa-192x192.png');
     const out512 = path.join(publicDir, 'pwa-512x512.png');
@@ -97,7 +98,10 @@ function writeIfNeeded(filePath, base64) {
           png.data[idx + 3] = color.a;
         }
       }
-      return PNG.sync.write(png);
+      // Alguns builds expõem sync direto no construtor; outros via propriedade estática
+      const writer = (PNG.sync && PNG.sync.write) ? PNG.sync : (PNG && PNG.write ? PNG : null);
+      if (!writer || !writer.write) throw new Error('pngjs writer indisponível');
+      return writer.write(png);
     };
 
     fs.writeFileSync(out192, makePng(192));
