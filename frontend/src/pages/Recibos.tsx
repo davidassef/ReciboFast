@@ -71,94 +71,6 @@ const getStatusColor = (status: Recibo['status']) => {
   }
   };
 
-  // Inicialização do canvas de assinatura quando o modal está aberto
-  useEffect(() => {
-    if (!showSignCanvas) return;
-    const canvas = document.getElementById('signature-canvas') as HTMLCanvasElement | null;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    let drawing = false;
-    const DPR = window.devicePixelRatio || 1;
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * DPR;
-      canvas.height = rect.height * DPR;
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#111827';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, rect.width, rect.height);
-    };
-    resize();
-    const start = (x: number, y: number) => { drawing = true; ctx.beginPath(); ctx.moveTo(x, y); };
-    const move = (x: number, y: number) => { if (!drawing) return; ctx.lineTo(x, y); ctx.stroke(); };
-    const end = () => { drawing = false; };
-    const getPos = (e: MouseEvent | TouchEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      if ('touches' in e) {
-        const t = e.touches[0] || (e as any).changedTouches?.[0];
-        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
-      }
-      const m = e as MouseEvent;
-      return { x: m.clientX - rect.left, y: m.clientY - rect.top };
-    };
-    const onDown = (e: any) => { e.preventDefault(); const p = getPos(e); start(p.x, p.y); };
-    const onMove = (e: any) => { e.preventDefault(); const p = getPos(e); move(p.x, p.y); };
-    const onUp = (e: any) => { e.preventDefault(); end(); };
-    window.addEventListener('resize', resize);
-    canvas.addEventListener('mousedown', onDown);
-    canvas.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    canvas.addEventListener('touchstart', onDown, { passive: false } as any);
-    canvas.addEventListener('touchmove', onMove, { passive: false } as any);
-    window.addEventListener('touchend', onUp, { passive: false } as any);
-    return () => {
-      window.removeEventListener('resize', resize);
-      canvas.removeEventListener('mousedown', onDown);
-      canvas.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      canvas.removeEventListener('touchstart', onDown as any);
-      canvas.removeEventListener('touchmove', onMove as any);
-      window.removeEventListener('touchend', onUp as any);
-    };
-  }, [showSignCanvas, canvasKey]);
-
-  // Validação CPF/CNPJ com checksum
-  const validateCPF = (cpf: string): boolean => {
-    const v = onlyDigits(cpf).padStart(11, '0');
-    if (v.length !== 11 || /^([0-9])\1+$/.test(v)) return false;
-    let sum = 0;
-    for (let i = 0; i < 9; i++) sum += parseInt(v.charAt(i)) * (10 - i);
-    let rev = 11 - (sum % 11);
-    if (rev >= 10) rev = 0;
-    if (rev !== parseInt(v.charAt(9))) return false;
-    sum = 0;
-    for (let i = 0; i < 10; i++) sum += parseInt(v.charAt(i)) * (11 - i);
-    rev = 11 - (sum % 11);
-    if (rev >= 10) rev = 0;
-    return rev === parseInt(v.charAt(10));
-  };
-
-  const validateCNPJ = (cnpj: string): boolean => {
-    const v = onlyDigits(cnpj).padStart(14, '0');
-    if (v.length !== 14 || /^([0-9])\1+$/.test(v)) return false;
-    const calc = (base: number) => {
-      let size = base - 7, pos = base - 8, sum = 0;
-      for (let i = 0; i < base - 1; i++) {
-        sum += parseInt(v.charAt(i)) * size--;
-        if (size < 2) size = 9;
-      }
-      let result = sum % 11;
-      return (result < 2) ? 0 : 11 - result;
-    };
-    const d1 = calc(13);
-    if (d1 !== parseInt(v.charAt(12))) return false;
-    const d2 = calc(14);
-    return d2 === parseInt(v.charAt(13));
-  };
-
   // Helper simples para detectar UUIDs
   const isUUID = (v: string | undefined | null) => !!v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(v);
 
@@ -264,6 +176,60 @@ const Recibos: React.FC = () => {
   const [showSignCanvas, setShowSignCanvas] = useState<false | 'novo' | 'edit'>(false);
   const [canvasKey, setCanvasKey] = useState<number>(0);
 
+  // Inicialização do canvas de assinatura quando o modal está aberto
+  useEffect(() => {
+    if (!showSignCanvas) return;
+    const canvas = document.getElementById('signature-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let drawing = false;
+    const DPR = window.devicePixelRatio || 1;
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * DPR;
+      canvas.height = rect.height * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#111827';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    };
+    resize();
+    const start = (x: number, y: number) => { drawing = true; ctx.beginPath(); ctx.moveTo(x, y); };
+    const move = (x: number, y: number) => { if (!drawing) return; ctx.lineTo(x, y); ctx.stroke(); };
+    const end = () => { drawing = false; };
+    const getPos = (e: MouseEvent | TouchEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if ('touches' in e) {
+        const t = e.touches[0] || (e as any).changedTouches?.[0];
+        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      }
+      const m = e as MouseEvent;
+      return { x: m.clientX - rect.left, y: m.clientY - rect.top };
+    };
+    const onDown = (e: any) => { e.preventDefault(); const p = getPos(e); start(p.x, p.y); };
+    const onMove = (e: any) => { e.preventDefault(); const p = getPos(e); move(p.x, p.y); };
+    const onUp = (e: any) => { e.preventDefault(); end(); };
+    window.addEventListener('resize', resize);
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchstart', onDown, { passive: false } as any);
+    canvas.addEventListener('touchmove', onMove, { passive: false } as any);
+    window.addEventListener('touchend', onUp, { passive: false } as any);
+    return () => {
+      window.removeEventListener('resize', resize);
+      canvas.removeEventListener('mousedown', onDown);
+      canvas.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      canvas.removeEventListener('touchstart', onDown as any);
+      canvas.removeEventListener('touchmove', onMove as any);
+      window.removeEventListener('touchend', onUp as any);
+    };
+  }, [showSignCanvas, canvasKey]);
+
   // Exclusão segura com confirmação de senha
   const [showDeleteRecibo, setShowDeleteRecibo] = useState(false);
   const [deleteTargetRecibo, setDeleteTargetRecibo] = useState<Recibo | null>(null);
@@ -357,6 +323,40 @@ const Recibos: React.FC = () => {
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  };
+
+  // Validação CPF/CNPJ com checksum
+  const validateCPF = (cpf: string): boolean => {
+    const v = onlyDigits(cpf).padStart(11, '0');
+    if (v.length !== 11 || /^([0-9])\1+$/.test(v)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(v.charAt(i)) * (10 - i);
+    let rev = 11 - (sum % 11);
+    if (rev >= 10) rev = 0;
+    if (rev !== parseInt(v.charAt(9))) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(v.charAt(i)) * (11 - i);
+    rev = 11 - (sum % 11);
+    if (rev >= 10) rev = 0;
+    return rev === parseInt(v.charAt(10));
+  };
+
+  const validateCNPJ = (cnpj: string): boolean => {
+    const v = onlyDigits(cnpj).padStart(14, '0');
+    if (v.length !== 14 || /^([0-9])\1+$/.test(v)) return false;
+    const calc = (base: number) => {
+      let size = base - 7, pos = base - 8, sum = 0;
+      for (let i = 0; i < base - 1; i++) {
+        sum += parseInt(v.charAt(i)) * size--;
+        if (size < 2) size = 9;
+      }
+      let result = sum % 11;
+      return (result < 2) ? 0 : 11 - result;
+    };
+    const d1 = calc(13);
+    if (d1 !== parseInt(v.charAt(12))) return false;
+    const d2 = calc(14);
+    return d2 === parseInt(v.charAt(13));
   };
 
   // Carregar logo padrão do usuário a partir do user_metadata.default_logo_path
@@ -1282,6 +1282,39 @@ setEditValorInput('');
                     </div>
                   </div>
                 )}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assinatura do emissor (imagem)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      let uploadFile = file;
+                      const ext = (file.name.split('.').pop() || '').toLowerCase();
+                      const isHeic = ext === 'heic' || ext === 'heif' || file.type === 'image/heic' || file.type === 'image/heif';
+                      if (isHeic) {
+                        try {
+                          const heic2any = await import('heic2any');
+                          // @ts-ignore
+                          const conv = await (heic2any as any)({ blob: file, toType: 'image/jpeg' });
+                          const blob: Blob = Array.isArray(conv) ? conv[0] : conv;
+                          uploadFile = new File([blob], (file.name.replace(/\.[^.]+$/, '')||'assinatura')+'.jpg', { type: 'image/jpeg' });
+                        } catch {}
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => setEditRecibo(prev => ({ ...prev, signatureDataUrl: String(reader.result||'') }));
+                      reader.readAsDataURL(uploadFile);
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                  <div className="mt-2">
+                    <button type="button" onClick={() => { setShowSignCanvas('edit'); setCanvasKey(k => k + 1); }} className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">Assinar no touch</button>
+                  </div>
+                  {editRecibo.signatureDataUrl && (
+                    <img src={editRecibo.signatureDataUrl} alt="Assinatura do emissor" className="h-10 object-contain border rounded bg-white px-2 mt-2" />
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
@@ -1417,7 +1450,6 @@ setEditValorInput('');
                 </div>
               </div>
               <p className="mt-1 text-xs text-gray-500">A assinatura será exibida na impressão do recibo acima da linha de assinatura.</p>
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                 <textarea value={editRecibo.descricao || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, descricao: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} />
