@@ -187,6 +187,23 @@ class SignaturesService {
 
       onProgress?.(100);
 
+      // Garantir espelho em rf_signatures para dropdowns
+      try {
+        const { data: existing } = await supabase
+          .from('rf_signatures')
+          .select('id')
+          .eq('owner_id', userId)
+          .eq('file_path', uploadData.path)
+          .maybeSingle();
+        if (!existing?.id) {
+          await supabase
+            .from('rf_signatures')
+            .insert({ owner_id: userId, file_path: uploadData.path })
+            .select('id')
+            .single();
+        }
+      } catch {}
+
       return {
         success: true,
         signature: signatureData as Signature,
@@ -511,6 +528,23 @@ class SignaturesService {
       }
 
       onProgress?.(100);
+
+      // Garantir espelho em rf_signatures
+      try {
+        const { data: existing } = await supabase
+          .from('rf_signatures')
+          .select('id')
+          .eq('owner_id', userId)
+          .eq('file_path', uploadData.path)
+          .maybeSingle();
+        if (!existing?.id) {
+          await supabase
+            .from('rf_signatures')
+            .insert({ owner_id: userId, file_path: uploadData.path })
+            .select('id')
+            .single();
+        }
+      } catch {}
 
       return {
         success: true,

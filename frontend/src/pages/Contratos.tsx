@@ -1184,6 +1184,53 @@ const Contratos: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={editContrato.numero || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
+              {/* Emitir em nome de outra pessoa (edição) - movido para o topo, como no Novo Contrato */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editEmitirOutro || !!editContrato.issuerName}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setEditEmitirOutro(checked);
+                      if (!checked) {
+                        setEditContrato(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
+                      }
+                    }}
+                  />
+                  Emitir em nome de outra pessoa
+                </label>
+                {(editEmitirOutro || !!editContrato.issuerName) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input
+                        type="text"
+                        value={editContrato.issuerName || ''}
+                        onChange={(e) => setEditContrato(prev => ({ ...prev, issuerName: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ do emissor (opcional)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        value={editContrato.issuerDocumento || ''}
+                        onChange={(e) => {
+                          const d = onlyDigits(e.target.value);
+                          const formatted = d.length <= 11 ? formatCPF(d) : formatCNPJ(d);
+                          setEditContrato(prev => ({ ...prev, issuerDocumento: formatted }));
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input value={editContrato.cliente || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, cliente: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
@@ -1338,47 +1385,6 @@ const Contratos: React.FC = () => {
                     </select>
                   )}
                 </div>
-              </div>
-              {/* Emitir em nome de outra pessoa (edição) */}
-              <div className="border rounded-lg p-3 space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={editEmitirOutro || !!editContrato.issuerName}
-                    onChange={(e) => setEditEmitirOutro(e.target.checked)}
-                  />
-                  Emitir em nome de outra pessoa
-                </label>
-                {(editEmitirOutro || !!editContrato.issuerName) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
-                      <input
-                        type="text"
-                        value={editContrato.issuerName || ''}
-                        onChange={(e) => setEditContrato(prev => ({ ...prev, issuerName: e.target.value }))}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nome completo"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ do emissor (opcional)</label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                        value={editContrato.issuerDocumento || ''}
-                        onChange={(e) => {
-                          const d = onlyDigits(e.target.value);
-                          const formatted = d.length <= 11 ? formatCPF(d) : formatCNPJ(d);
-                          setEditContrato(prev => ({ ...prev, issuerDocumento: formatted }));
-                        }}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
               {/* Objetivo do contrato (edição) */}
               <div>

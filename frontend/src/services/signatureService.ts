@@ -178,6 +178,9 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
+    // Limpeza automática antes de listar (tolerante a falhas)
+    try { await cleanInvalidUserSignatures(); } catch {}
+
     // Buscar no schema atual rf_signatures usando colunas mínimas (evita 400 se file_name não existir)
     let rfRows: any[] = [];
     try {
@@ -189,8 +192,47 @@ export class SignatureService {
       if (!resp.error && Array.isArray(resp.data)) rfRows = resp.data as any[];
     } catch {}
 
-    // Usar apenas rf_signatures para alimentar dropdowns
-    const merged = Array.from((rfRows || []));
+    // Usar rf_signatures como fonte principal
+    let merged = Array.from((rfRows || []));
+
+    // Backfill automático: se não houver itens em rf_signatures, tentar espelhar registros legados válidos
+    if (merged.length === 0) {
+      try {
+        const { data: legacyRows } = await supabase
+          .from('signatures')
+          .select('file_path, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        const validLegacy = (legacyRows || []).filter((r: any) => {
+          const p = String(r.file_path || '');
+          return p.startsWith(`${user.id}/`) && !p.includes('/branding/') && p.toLowerCase().endsWith('.png');
+        });
+        for (const r of validLegacy) {
+          try {
+            const { data: exists } = await supabase
+              .from('rf_signatures')
+              .select('id')
+              .eq('owner_id', user.id)
+              .eq('file_path', r.file_path)
+              .maybeSingle();
+            if (!exists?.id) {
+              await supabase
+                .from('rf_signatures')
+                .insert({ owner_id: user.id, file_path: r.file_path })
+                .select('id')
+                .single();
+            }
+          } catch {}
+        }
+        // Recarregar rf_signatures após backfill
+        const again = await supabase
+          .from('rf_signatures')
+          .select('id, file_path, created_at')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false });
+        if (!again.error && Array.isArray(again.data)) merged = again.data as any[];
+      } catch {}
+    }
 
     // Para cada item, garantir que o id referencie rf_signatures (criando registro mínimo se necessário)
     const resolved = await Promise.all(
@@ -435,6 +477,86 @@ export class SignatureService {
       throw err;
     }
   }
+};
+
+/**
+ * Limpa entradas inválidas na tabela rf_signatures do usuário atual.
+ * Critérios para remoção:
+ *  - file_path que não começa com `${user.id}/`
+ *  - file_path contendo '/branding/' (logos)
+ *  - file_path não terminando em '.png'
+ *  - não é possível obter URL assinada ou pública para o arquivo
+ *  - duplicatas por file_path (mantém a mais recente por created_at)
+ * Não remove arquivos do storage (apenas entradas órfãs/ruins na rf_signatures).
+ */
+export async function cleanInvalidUserSignatures(): Promise<{ removed: number, kept: number }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Usuário não autenticado');
+
+  // Buscar tudo do usuário
+  const { data, error } = await supabase
+    .from('rf_signatures')
+    .select('id, file_path, created_at')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`Erro ao carregar rf_signatures: ${error.message}`);
+
+  const rows = Array.isArray(data) ? data as Array<{ id: string; file_path: string; created_at: string }> : [];
+  const toDelete: string[] = [];
+  const seenByPath = new Map<string, string>(); // file_path -> id mantido
+
+  // Primeiro, marcar duplicatas por file_path (mantém o primeiro - o mais recente pela ordenação desc)
+  for (const r of rows) {
+    const p = String(r.file_path || '');
+    if (seenByPath.has(p)) {
+      toDelete.push(r.id);
+    } else {
+      seenByPath.set(p, r.id);
+    }
+  }
+
+  // Verificações de regras de filtro + URL
+  for (const r of rows) {
+    const p = String(r.file_path || '');
+    const isOwnerOk = p.startsWith(`${user.id}/`);
+    const isBranding = p.includes('/branding/');
+    const isPNG = p.toLowerCase().endsWith('.png');
+    if (!isOwnerOk || isBranding || !isPNG) {
+      toDelete.push(r.id);
+      continue;
+    }
+    // Testar URL (signed + fallback pública)
+    try {
+      let ok = false;
+      try {
+        const signed = await supabase.storage.from('signatures').createSignedUrl(p, 60);
+        ok = !!signed.data?.signedUrl;
+      } catch {}
+      if (!ok) {
+        const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(p);
+        ok = !!urlData.publicUrl;
+      }
+      if (!ok) toDelete.push(r.id);
+    } catch {
+      toDelete.push(r.id);
+    }
+  }
+
+  // Deduplicar ids a deletar
+  const uniqueDelete = Array.from(new Set(toDelete));
+  let removed = 0;
+  if (uniqueDelete.length > 0) {
+    const { error: delErr } = await supabase
+      .from('rf_signatures')
+      .delete()
+      .in('id', uniqueDelete)
+      .eq('owner_id', user.id);
+    if (delErr) throw new Error(`Erro ao limpar rf_signatures: ${delErr.message}`);
+    removed = uniqueDelete.length;
+  }
+
+  const kept = rows.length - removed;
+  return { removed, kept };
 }
 
 // Adapter simples esperado por certos componentes (ex.: ReceiptForm)
