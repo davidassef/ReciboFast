@@ -160,6 +160,8 @@ export const SignatureMethodModal: React.FC<SignatureMethodModalProps> = ({
             </div>
           </div>
         )}
+        {/* fecha wrapper de conteúdo rolável */}
+        </div>
       </div>
     </Modal>
   );
