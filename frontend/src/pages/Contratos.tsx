@@ -721,7 +721,7 @@ const Contratos: React.FC = () => {
 
       {showDeleteContrato && (
         <Modal open={showDeleteContrato} onOpenChange={(o) => { if (!o) cancelDeleteContrato(); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={cancelDeleteContrato} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -798,7 +798,7 @@ const Contratos: React.FC = () => {
       {/* Modal: Novo Contrato */}
       {showNovoContrato && (
         <Modal open={showNovoContrato} onOpenChange={(o) => { if (!o) setShowNovoContrato(false); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1007,7 +1007,7 @@ const Contratos: React.FC = () => {
       {/* Modal: Visualizar Contrato */}
       {showViewContrato && contratoSelecionado && (
         <Modal open={showViewContrato} onOpenChange={(o) => { if (!o) setShowViewContrato(false); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1044,7 +1044,7 @@ const Contratos: React.FC = () => {
       {/* Modal: Editar Contrato */}
       {showEditContrato && contratoSelecionado && (
         <Modal open={showEditContrato} onOpenChange={(o) => { if (!o) setShowEditContrato(false); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditContrato(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>

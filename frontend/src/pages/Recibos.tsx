@@ -941,7 +941,7 @@ setEditValorInput('');
       {/* Modal: Novo Recibo */}
       {showNovoRecibo && (
         <Modal open={showNovoRecibo} onOpenChange={(o) => { if (!o) setShowNovoRecibo(false); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowNovoRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1201,7 +1201,7 @@ setEditValorInput('');
       {/* Modal: Visualizar Recibo */}
       {showViewRecibo && reciboSelecionado && (
         <Modal open={showViewRecibo} onOpenChange={(o) => { if (!o) setShowViewRecibo(false); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
@@ -1234,7 +1234,7 @@ setEditValorInput('');
       {/* Modal: Editar Recibo */}
       {showEditRecibo && reciboSelecionado && (
         <Modal open={showEditRecibo} onOpenChange={(o) => { if (!o) setShowEditRecibo(false); }} avoidTabs>
-          <div className="p-6 relative">
+          <div className="p-6 relative flex flex-col min-h-0">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
