@@ -1273,7 +1273,7 @@ setEditValorInput('');
                           if (v === '__create_logo__') { navigate('/assinaturas'); return; }
                           setEditRecibo(prev => ({ ...prev, logoDataUrl: v || undefined }));
                         }}
-                        className="px-3 py-2 border rounded-lg text-sm"
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!editRecibo.useLogo}
                       >
                         <option value="">Selecione</option>
@@ -1290,7 +1290,7 @@ setEditValorInput('');
                     <select
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
-                      className="px-3 py-2 border rounded-lg text-sm"
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                       disabled={!editRecibo.useLogo}
                     >
                       <option value="__create_logo__">Cadastrar Nova Logo</option>
@@ -1325,7 +1325,7 @@ setEditValorInput('');
                           const opt = signatureOptions.find(o => o.id === id);
                           setEditRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
                         }}
-                        className="px-3 py-2 border rounded-lg text-sm"
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!editUseSignature || editEmitirOutro}
                       >
                         <option value="">Selecione</option>
@@ -1342,7 +1342,7 @@ setEditValorInput('');
                     <select
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
-                      className="px-3 py-2 border rounded-lg text-sm"
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                       disabled={!editUseSignature || editEmitirOutro}
                     >
                       <option value="">Selecione</option>

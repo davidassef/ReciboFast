@@ -988,7 +988,7 @@ const Contratos: React.FC = () => {
                           if (v === '__create_logo__') { navigate('/assinaturas'); return; }
                           setNovoContrato(prev => ({ ...prev, logoUrl: v || undefined }));
                         }}
-                        className="px-3 py-2 border rounded-lg text-sm"
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!novoContrato.useLogo}
                       >
                         <option value="">Selecione</option>
@@ -1005,7 +1005,7 @@ const Contratos: React.FC = () => {
                     <select
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
-                      className="px-3 py-2 border rounded-lg text-sm"
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                       disabled={!novoContrato.useLogo}
                     >
                       <option value="__create_logo__">Cadastrar Nova Logo</option>
@@ -1254,7 +1254,7 @@ const Contratos: React.FC = () => {
                       const opt = signatureOptions.find(o => o.id === id);
                       setEditContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: opt?.url }));
                     }}
-                    className="px-3 py-2 border rounded-lg text-sm"
+                    className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                     disabled={!editUseSignature || signatureOptions.length === 0}
                   >
                     <option value="">Padrão da conta (assinatura)</option>
@@ -1288,7 +1288,7 @@ const Contratos: React.FC = () => {
                           if (v === '__create_logo__') { navigate('/assinaturas'); return; }
                           setEditContrato(prev => ({ ...prev, logoUrl: v || undefined }));
                         }}
-                        className="px-3 py-2 border rounded-lg text-sm"
+                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!editContrato.useLogo}
                       >
                         <option value="">Selecione</option>
@@ -1305,7 +1305,7 @@ const Contratos: React.FC = () => {
                     <select
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
-                      className="px-3 py-2 border rounded-lg text-sm"
+                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                       disabled={!editContrato.useLogo}
                     >
                       <option value="__create_logo__">Cadastrar Nova Logo</option>
