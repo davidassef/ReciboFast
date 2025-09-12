@@ -737,7 +737,11 @@ ${recibo.signatureDataUrl ? `<img src="${recibo.signatureDataUrl}" alt="Assinatu
 setReciboSelecionado(recibo);
 setEditRecibo({ ...recibo });
 setEditValorInput(formatNumberToCurrencyBR(recibo.valor));
-setEditEmitirOutro(!!(recibo.issuerName || recibo.issuerDocumento));
+const willEmitirOutro = !!(recibo.issuerName || recibo.issuerDocumento);
+setEditEmitirOutro(willEmitirOutro);
+// Se estiver emitindo em nome de outra pessoa, não usar assinatura do usuário
+// Caso contrário, ativar se já houver assinatura no recibo
+setEditUseSignature(!willEmitirOutro && !!(recibo.signatureId || recibo.signatureDataUrl));
 setShowEditRecibo(true);
 };
 
@@ -1202,7 +1206,10 @@ setEditValorInput('');
                 <input id="editEmitirOutro" type="checkbox" className="h-4 w-4" checked={editEmitirOutro} onChange={(e) => {
                   const checked = e.target.checked;
                   setEditEmitirOutro(checked);
-                  if (!checked) {
+                  if (checked) {
+                    // Ao emitir em nome de outra pessoa, não usar assinatura do usuário
+                    setEditUseSignature(false);
+                  } else {
                     setEditRecibo(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
                   }
                 }} />

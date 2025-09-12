@@ -234,6 +234,16 @@ export class SignatureService {
       } catch {}
     }
 
+    // Para nome amigável, tentar mapear file_path -> file_name (tabela legada)
+    const nameByPath = new Map<string, string>();
+    try {
+      const { data: legacyNames } = await supabase
+        .from('signatures')
+        .select('file_path, file_name')
+        .eq('user_id', user.id);
+      (legacyNames || []).forEach((r: any) => { if (r?.file_path && r?.file_name) nameByPath.set(r.file_path, r.file_name); });
+    } catch {}
+
     // Para cada item, garantir que o id referencie rf_signatures (criando registro mínimo se necessário)
     const resolved = await Promise.all(
       merged
@@ -268,7 +278,7 @@ export class SignatureService {
         }
 
         const fileNameWithExt = (sig.file_path as string).split('/').pop() || 'assinatura.png';
-        const displayName = fileNameWithExt;
+        const displayName = nameByPath.get(sig.file_path) || fileNameWithExt;
 
         return {
           id: rfId,
