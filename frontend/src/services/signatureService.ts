@@ -202,7 +202,10 @@ export class SignatureService {
 
     // Para cada item, garantir que o id referencie rf_signatures (criando registro mínimo se necessário)
     const resolved = await Promise.all(
-      merged.map(async (sig: any) => {
+      merged
+        // Remover itens de logos (armazenados em subpasta branding)
+        .filter((sig: any) => typeof sig.file_path === 'string' && !sig.file_path.includes('/branding/'))
+        .map(async (sig: any) => {
         // Sempre resolver pelo rf_signatures com owner_id + file_path
         let rfId: string | null = null;
         let createdAt: string | null = sig.created_at || null;
@@ -233,12 +236,19 @@ export class SignatureService {
           }
         }
 
-        // URL assinada/pública para preview
-        // Preferir URL pública para evitar expiração de tokens
-        const { data: urlData } = supabase.storage
-          .from(this.BUCKET_NAME)
-          .getPublicUrl(sig.file_path);
-        const publicUrl = urlData.publicUrl;
+        // URL assinada/pública para preview (pular se nenhuma disponível)
+        let previewUrl: string | null = null;
+        try {
+          const signed = await supabase.storage.from(this.BUCKET_NAME).createSignedUrl(sig.file_path, 60 * 10);
+          previewUrl = signed.data?.signedUrl || null;
+        } catch {}
+        if (!previewUrl) {
+          const { data: urlData } = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(sig.file_path);
+          previewUrl = urlData.publicUrl || null;
+        }
+        if (!previewUrl) {
+          return null; // Ignora itens sem URL válida
+        }
 
         const fileNameWithExt = sig.file_path.split('/').pop() || 'assinatura.png';
         const displayName = (sig as any).file_name || fileNameWithExt;
@@ -247,7 +257,7 @@ export class SignatureService {
           id: rfId!,
           name: displayName,
           display_name: displayName,
-          thumbnail_url: publicUrl,
+          thumbnail_url: previewUrl,
           is_default: false,
           created_at: createdAt || new Date().toISOString(),
           file_size: undefined,
@@ -256,7 +266,8 @@ export class SignatureService {
       })
     );
 
-    return resolved;
+    // Filtrar nulos (itens ignorados por falta de URL)
+    return (resolved.filter(Boolean) as SignatureGalleryItem[]);
   }
 
   /**
