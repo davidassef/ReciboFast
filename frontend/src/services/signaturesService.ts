@@ -495,9 +495,6 @@ class SignaturesService {
           mime_type: 'image/png',
           width: size.width,
           height: size.height,
-          creation_method: 'canvas',
-          quality_score: processingResult.qualityScore,
-          canvas_data: canvasData,
           is_active: true
         })
         .select()
