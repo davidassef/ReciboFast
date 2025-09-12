@@ -42,6 +42,9 @@ interface Contrato {
   documento: string; // CPF ou CNPJ obrigatório
   signatureId?: string; // ID da assinatura selecionada
   signatureUrl?: string; // URL resolvida para preview/print
+  // Logo opcional
+  logoUrl?: string;
+  useLogo?: boolean;
   objeto?: string;
   clausulas?: Clausula[];
   issuerName?: string; // Emitir em nome de outra pessoa
@@ -198,6 +201,8 @@ const Contratos: React.FC = () => {
   const [novoValorInput, setNovoValorInput] = useState<string>('');
   const [editValorInput, setEditValorInput] = useState<string>('');
   const [defaultSignatureUrl, setDefaultSignatureUrl] = useState<string | null>(null);
+  const [defaultLogoUrl, setDefaultLogoUrl] = useState<string | null>(null);
+  const [logoOptions, setLogoOptions] = useState<Array<{ path: string; url: string; name: string }>>([]);
   const [defaultSignaturePath, setDefaultSignaturePath] = useState<string | null>(null);
   const [showSignatureSettings, setShowSignatureSettings] = useState(false);
   const [signatureUploading, setSignatureUploading] = useState(false);
@@ -220,20 +225,7 @@ const Contratos: React.FC = () => {
   const [deleteLoadingContrato, setDeleteLoadingContrato] = useState(false);
   const [deleteErrorContrato, setDeleteErrorContrato] = useState<string | null>(null);
 
-  // Bloqueia scroll do body/html quando qualquer modal está aberto
-  useEffect(() => {
-    const anyModalOpen = showNovoContrato || showViewContrato || showEditContrato || showDeleteContrato;
-    if (anyModalOpen) {
-      const origBody = document.body.style.overflow;
-      const origHtml = document.documentElement.style.overflow;
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = origBody;
-        document.documentElement.style.overflow = origHtml;
-      };
-    }
-  }, [showNovoContrato, showViewContrato, showEditContrato, showDeleteContrato]);
+  // Removido lock global de scroll: o componente Modal já gerencia o scroll lock
 
   // Helpers CPF/CNPJ
   const onlyDigits = (v: string) => (v || '').replace(/\D/g, '');
@@ -286,8 +278,8 @@ const Contratos: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
         const path = (user?.user_metadata as any)?.default_signature_path as string | undefined;
         if (!path) { setDefaultSignatureUrl(null); setDefaultSignaturePath(null); return; }
-        const { data: signed } = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
-        setDefaultSignatureUrl(signed?.signedUrl || null);
+        const { data: pub } = await supabase.storage.from('signatures').getPublicUrl(path);
+        setDefaultSignatureUrl(pub.publicUrl || null);
         setDefaultSignaturePath(path);
       } catch {
         setDefaultSignatureUrl(null);
@@ -296,6 +288,44 @@ const Contratos: React.FC = () => {
     };
     loadDefaultSignature();
   }, []);
+
+  // Carregar logos do usuário (bucket 'signatures') e logo padrão (default_logo_path)
+  useEffect(() => {
+    const loadLogos = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const path = (user?.user_metadata as any)?.default_logo_path as string | undefined;
+        if (path) {
+          const { data: pub } = await supabase.storage.from('signatures').getPublicUrl(path);
+          setDefaultLogoUrl(pub.publicUrl || null);
+        } else {
+          setDefaultLogoUrl(null);
+        }
+
+        const opts: Array<{ path: string; url: string; name: string }> = [];
+        const rootPath = `${user.id}`;
+        const brandPath = `${user.id}/branding`;
+        const { data: rootList } = await supabase.storage.from('signatures').list(rootPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
+        const { data: brandList } = await supabase.storage.from('signatures').list(brandPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
+        const add = async (base: string, files: any[] | null | undefined) => {
+          if (!files) return;
+          for (const f of files) {
+            if (!f.name) continue;
+            const full = `${base}/${f.name}`;
+            const { data: pub2 } = await supabase.storage.from('signatures').getPublicUrl(full);
+            if (pub2?.publicUrl) opts.push({ path: full, url: pub2.publicUrl, name: f.name });
+          }
+        };
+        await add(rootPath, rootList);
+        await add(brandPath, brandList);
+        setLogoOptions(opts);
+      } catch (e) {
+        console.warn('Falha ao carregar logos do usuário (contratos):', e);
+      }
+    };
+    if (showNovoContrato || showEditContrato) loadLogos();
+  }, [showNovoContrato, showEditContrato]);
 
   // Sincroniza assinaturas automaticamente ao abrir modais de novo/editar
   useEffect(() => {
@@ -474,11 +504,15 @@ const Contratos: React.FC = () => {
   };
 
   const generatePrintableContratoHtml = (contrato: Contrato) => {
+    const logoUrl = contrato.useLogo ? (contrato.logoUrl || defaultLogoUrl) : null;
     const style = `
       <style>
         :root { --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --bg:#ffffff; }
         *{box-sizing:border-box} body{font-family:Georgia, 'Times New Roman', serif; margin:32px; background:var(--bg); color:var(--fg)}
-        h1{font-size:22px; text-align:center; margin:0 0 12px; text-transform:uppercase; letter-spacing:.5px}
+        .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        .brand{display:flex;align-items:center;gap:12px}
+        .brand .logo{height:42px;object-fit:contain}
+        h1{font-size:22px; margin:0; text-transform:uppercase; letter-spacing:.5px}
         .section{margin-top:18px}
         .label{color:var(--muted)}
         .field{display:flex; justify-content:space-between; gap:16px; border-bottom:1px dotted var(--border); padding:6px 0}
@@ -497,7 +531,13 @@ const Contratos: React.FC = () => {
       <html>
         <head><meta charset="utf-8">${style}<title>Contrato ${contrato.numero}</title></head>
         <body>
-          <h1>Contrato de Prestação de Serviços nº ${contrato.numero}</h1>
+          <div class="head">
+            <div class="brand">
+              ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo"/>` : ''}
+              <h1>Contrato de Prestação de Serviços nº ${contrato.numero}</h1>
+            </div>
+            <div class="label">${new Date().toLocaleDateString('pt-BR')}</div>
+          </div>
           <div class="section">
             <div class="meta">
               <div class="field"><span class="label">Contratante</span><span>${contrato.cliente}</span></div>

@@ -182,24 +182,11 @@ export class SignatureService {
         }
 
         // URL assinada/pública para preview
-        let publicUrl = '';
-        try {
-          const { data: signed } = await supabase.storage
-            .from(this.BUCKET_NAME)
-            .createSignedUrl(sig.file_path, 60 * 60);
-          publicUrl = signed?.signedUrl || '';
-          if (!publicUrl) {
-            const { data: urlData } = supabase.storage
-              .from(this.BUCKET_NAME)
-              .getPublicUrl(sig.file_path);
-            publicUrl = urlData.publicUrl;
-          }
-        } catch {
-          const { data: urlData } = supabase.storage
-            .from(this.BUCKET_NAME)
-            .getPublicUrl(sig.file_path);
-          publicUrl = urlData.publicUrl;
-        }
+        // Preferir URL pública para evitar expiração de tokens
+        const { data: urlData } = supabase.storage
+          .from(this.BUCKET_NAME)
+          .getPublicUrl(sig.file_path);
+        const publicUrl = urlData.publicUrl;
 
         const fileNameWithExt = sig.file_path.split('/').pop() || 'assinatura.png';
         const displayName = sig.file_name || fileNameWithExt;
@@ -239,25 +226,11 @@ export class SignatureService {
       throw new Error(`Erro ao buscar assinatura: ${error.message}`);
     }
 
-    // URL assinada para preview (fallback público)
-    let url = '';
-    try {
-      const { data: signed } = await supabase.storage
-        .from(this.BUCKET_NAME)
-        .createSignedUrl(signature.file_path, 60 * 60);
-      url = signed?.signedUrl || '';
-      if (!url) {
-        const { data: urlData } = supabase.storage
-          .from(this.BUCKET_NAME)
-          .getPublicUrl(signature.file_path);
-        url = urlData.publicUrl;
-      }
-    } catch {
-      const { data: urlData } = supabase.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(signature.file_path);
-      url = urlData.publicUrl;
-    }
+    // Usar URL pública para preview (evita expiração)
+    const { data: urlData } = supabase.storage
+      .from(this.BUCKET_NAME)
+      .getPublicUrl(signature.file_path);
+    const url = urlData.publicUrl;
 
     return {
       id: signature.id,
@@ -289,24 +262,10 @@ export class SignatureService {
       throw new Error(`Erro ao buscar assinatura por caminho: ${error.message}`);
     }
 
-    let url = '';
-    try {
-      const { data: signed } = await supabase.storage
-        .from(this.BUCKET_NAME)
-        .createSignedUrl(signature.file_path, 60 * 60);
-      url = signed?.signedUrl || '';
-      if (!url) {
-        const { data: urlData } = supabase.storage
-          .from(this.BUCKET_NAME)
-          .getPublicUrl(signature.file_path);
-        url = urlData.publicUrl;
-      }
-    } catch {
-      const { data: urlData } = supabase.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(signature.file_path);
-      url = urlData.publicUrl;
-    }
+    const { data: urlData } = supabase.storage
+      .from(this.BUCKET_NAME)
+      .getPublicUrl(signature.file_path);
+    const url = urlData.publicUrl;
 
     return {
       id: signature.id,
