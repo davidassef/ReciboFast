@@ -30,6 +30,7 @@ import { receiptsApi } from '../services';
 import { ReceiptService as SupaReceiptService } from '../services/receiptService';
 import { ReceiptsMinimalService } from '../services/receiptsSupabaseService';
 import { generateRecurringReceipts } from '../utils/recibos';
+import Modal from '../components/ui/Modal';
 
 interface Recibo {
   id: string;
@@ -1193,50 +1194,48 @@ setEditValorInput('');
             </form>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modais de gerenciamento foram removidos. Gestão de logo e assinatura fica na página de Perfil. */}
 
       {/* Modal: Visualizar Recibo */}
       {showViewRecibo && reciboSelecionado && (
-        <div className="fixed inset-x-0 top-0 bottom-20 z-[70] flex items-start justify-center p-4 pt-10">
-          <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={() => setShowViewRecibo(false)} />
-          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
+        <Modal open={showViewRecibo} onOpenChange={(o) => { if (!o) setShowViewRecibo(false); }} avoidTabs>
+          <div className="p-6 relative">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowViewRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">{reciboSelecionado.numero}</h3>
             <div className="flex-1 overflow-y-auto pr-1">
-            <div className="space-y-2 text-sm text-gray-700">
-              <div className="flex justify-between"><span className="text-gray-500">Cliente</span><span className="font-medium">{reciboSelecionado.cliente}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Valor</span><span className="font-medium">R$ {reciboSelecionado.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Emissão</span><span>{new Date(reciboSelecionado.dataEmissao).toLocaleDateString('pt-BR')}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Status</span><span className={cn('inline-flex px-2 py-1 text-xs font-semibold rounded-full', getStatusColor(reciboSelecionado.status))}>{getStatusLabel(reciboSelecionado.status)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">CPF</span><span>{reciboSelecionado.cpf && reciboSelecionado.cpf.trim() ? reciboSelecionado.cpf : 'Não informado'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Forma</span><span>{reciboSelecionado.formaPagamento && reciboSelecionado.formaPagamento.trim() ? reciboSelecionado.formaPagamento : 'Não informado'}</span></div>
-              <div>
-                <div className="text-gray-500">Descrição</div>
-                <div className="mt-1">{reciboSelecionado.descricao && reciboSelecionado.descricao.trim() ? reciboSelecionado.descricao : 'Não informado'}</div>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex justify-between"><span className="text-gray-500">Cliente</span><span className="font-medium">{reciboSelecionado.cliente}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Valor</span><span className="font-medium">R$ {reciboSelecionado.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Emissão</span><span>{new Date(reciboSelecionado.dataEmissao).toLocaleDateString('pt-BR')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Status</span><span className={cn('inline-flex px-2 py-1 text-xs font-semibold rounded-full', getStatusColor(reciboSelecionado.status))}>{getStatusLabel(reciboSelecionado.status)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">CPF</span><span>{reciboSelecionado.cpf && reciboSelecionado.cpf.trim() ? reciboSelecionado.cpf : 'Não informado'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Forma</span><span>{reciboSelecionado.formaPagamento && reciboSelecionado.formaPagamento.trim() ? reciboSelecionado.formaPagamento : 'Não informado'}</span></div>
+                <div>
+                  <div className="text-gray-500">Descrição</div>
+                  <div className="mt-1">{reciboSelecionado.descricao && reciboSelecionado.descricao.trim() ? reciboSelecionado.descricao : 'Não informado'}</div>
+                </div>
               </div>
-            </div>
             </div>
             <div className="flex items-center justify-between gap-3 mt-4">
               <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" className="h-4 w-4" checked={printWithLogo} onChange={(e) => setPrintWithLogo(e.target.checked)} />
-                Exibir logo nesta impressão
+                Exibir logo da sua conta
               </label>
               <button onClick={() => handleDownloadRecibo({ ...reciboSelecionado, useLogo: printWithLogo })} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Imprimir/Salvar</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Editar Recibo */}
       {showEditRecibo && reciboSelecionado && (
-        <div className="fixed inset-x-0 top-0 bottom-20 z-[70] flex items-start justify-center p-4 pt-10">
-          <div className="fixed inset-x-0 top-0 bottom-20 bg-black/50" onClick={() => setShowEditRecibo(false)} />
-          <div className="relative z-10 bg-white rounded-lg shadow-lg w-full sm:max-w-md md:max-w-lg lg:max-w-xl 2xl:max-w-2xl p-6 max-h-[70vh] flex flex-col overflow-hidden">
+        <Modal open={showEditRecibo} onOpenChange={(o) => { if (!o) setShowEditRecibo(false); }} avoidTabs>
+          <div className="p-6 relative">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-700" onClick={() => setShowEditRecibo(false)} aria-label="Fechar">
               <X className="w-5 h-5" />
             </button>

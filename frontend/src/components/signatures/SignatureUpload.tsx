@@ -3,7 +3,7 @@
 // Descrição: Componente para upload de assinaturas digitais
 // MIT License
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Check, AlertCircle } from 'lucide-react';
 import { SignatureService } from '../../services/signatureService';
 import type { Signature, SignatureValidation } from '../../types/signatures';
@@ -30,6 +30,17 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
   const [validation, setValidation] = useState<SignatureValidation | null>(null);
   const [customName, setCustomName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Evita abrir o seletor duas vezes (ex.: click em área + botão interno)
+  const isDialogOpenRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const onWindowFocus = () => {
+      // Ao fechar o seletor, o foco volta para a janela: libera o guard
+      isDialogOpenRef.current = false;
+    };
+    window.addEventListener('focus', onWindowFocus);
+    return () => window.removeEventListener('focus', onWindowFocus);
+  }, []);
 
   const validateFile = (file: File): SignatureValidation => {
     const errors: string[] = [];
@@ -124,6 +135,8 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
     if (e.target.files && e.target.files[0]) {
       handleFileSelect(e.target.files[0]);
     }
+    // Libera o guard após seleção/cancelamento
+    isDialogOpenRef.current = false;
   };
 
   const clearSelection = () => {
@@ -153,7 +166,12 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        onClick={() => !preview && fileInputRef.current?.click()}
+        onClick={() => {
+          if (preview || uploading) return;
+          if (isDialogOpenRef.current) return;
+          isDialogOpenRef.current = true;
+          fileInputRef.current?.click();
+        }}
       >
         <input
           ref={fileInputRef}
@@ -254,7 +272,13 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
             <div>
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (uploading) return;
+                  if (isDialogOpenRef.current) return;
+                  isDialogOpenRef.current = true;
+                  fileInputRef.current?.click();
+                }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 disabled={uploading}
               >

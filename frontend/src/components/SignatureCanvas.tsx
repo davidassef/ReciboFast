@@ -87,7 +87,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (disabled) return;
     
-    event.preventDefault();
+    if (event.cancelable) event.preventDefault();
     // Prevenir zoom e scroll no mobile
     document.body.style.overflow = 'hidden';
     const canvas = canvasRef.current;
@@ -112,7 +112,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (disabled || !isDrawing) return;
     
-    event.preventDefault();
+    if (event.cancelable) event.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -135,7 +135,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (disabled) return;
     
-    event.preventDefault();
+    if (event.cancelable) event.preventDefault();
     // Restaurar scroll no mobile
     document.body.style.overflow = '';
     stopDrawing();
