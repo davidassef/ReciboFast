@@ -195,8 +195,17 @@ export class SignatureService {
     // Para cada item, garantir que o id referencie rf_signatures (criando registro mínimo se necessário)
     const resolved = await Promise.all(
       merged
-        // Remover itens de logos (armazenados em subpasta branding)
-        .filter((sig: any) => typeof sig.file_path === 'string' && !sig.file_path.includes('/branding/'))
+        // Garantir que pertence ao owner atual e não é logo (branding), e somente PNG
+        .filter((sig: any) => {
+          if (typeof sig.file_path !== 'string') return false;
+          const p = sig.file_path as string;
+          // Deve começar com `${user.id}/`
+          if (!p.startsWith(`${user.id}/`)) return false;
+          // Excluir logos
+          if (p.includes('/branding/')) return false;
+          // Somente PNG
+          return p.toLowerCase().endsWith('.png');
+        })
         .map(async (sig: any) => {
         // Sempre resolver pelo rf_signatures com owner_id + file_path
         let rfId: string | null = null;

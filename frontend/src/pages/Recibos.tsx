@@ -539,7 +539,9 @@ const Recibos: React.FC = () => {
         if (!user) return;
         // Assinaturas: usar serviço central para listar por nome (display_name) e URL assinada
         const gallery = await SignatureService.getUserSignatures();
-        const sigOptions = gallery.map(item => ({ id: item.id, url: item.thumbnail_url, name: item.display_name || item.name }));
+        const sigOptions = gallery
+          .map(item => ({ id: item.id, url: item.thumbnail_url, name: item.display_name || item.name }))
+          .filter(opt => !!opt.url && typeof opt.name === 'string' && opt.name.toLowerCase().endsWith('.png'));
         setSignatureOptions(sigOptions);
 
         // Logos: apenas da subpasta 'branding' (evita misturar com assinaturas)

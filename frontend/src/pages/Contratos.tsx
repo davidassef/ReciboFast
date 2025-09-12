@@ -330,7 +330,9 @@ const Contratos: React.FC = () => {
     const loadSignatures = async () => {
       try {
         const gallery = await SignatureService.getUserSignatures();
-        const opts = gallery.map(i => ({ id: i.id, url: i.thumbnail_url, name: i.display_name || i.name }));
+        const opts = gallery
+          .map(i => ({ id: i.id, url: i.thumbnail_url, name: i.display_name || i.name }))
+          .filter(opt => !!opt.url && typeof opt.name === 'string' && opt.name.toLowerCase().endsWith('.png'));
         setSignatureOptions(opts);
       } catch (e) {
         console.warn('Falha ao carregar assinaturas para contratos:', e);
