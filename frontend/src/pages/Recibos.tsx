@@ -541,7 +541,8 @@ const Recibos: React.FC = () => {
         const gallery = await SignatureService.getUserSignatures();
         const sigOptions = gallery
           .map(item => ({ id: item.id, url: item.thumbnail_url, name: item.display_name || item.name }))
-          .filter(opt => !!opt.url && typeof opt.name === 'string' && opt.name.toLowerCase().endsWith('.png'));
+          // O serviço já retorna apenas PNGs válidos; não filtre pelo nome terminar com .png
+          .filter(opt => !!opt.url && typeof opt.name === 'string' && opt.name.trim().length > 0);
         setSignatureOptions(sigOptions);
 
         // Logos: apenas da subpasta 'branding' (evita misturar com assinaturas)

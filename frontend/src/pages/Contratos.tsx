@@ -332,7 +332,8 @@ const Contratos: React.FC = () => {
         const gallery = await SignatureService.getUserSignatures();
         const opts = gallery
           .map(i => ({ id: i.id, url: i.thumbnail_url, name: i.display_name || i.name }))
-          .filter(opt => !!opt.url && typeof opt.name === 'string' && opt.name.toLowerCase().endsWith('.png'));
+          // O serviço já retorna somente PNGs válidos; não filtre por extensão no nome
+          .filter(opt => !!opt.url && typeof opt.name === 'string' && opt.name.trim().length > 0);
         setSignatureOptions(opts);
       } catch (e) {
         console.warn('Falha ao carregar assinaturas para contratos:', e);
