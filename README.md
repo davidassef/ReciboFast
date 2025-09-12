@@ -5,7 +5,7 @@
 
 # 🧾 ReciboFast
 
-> **Sistema completo de gestão de aluguéis e geração de recibos com assinatura digital**
+> **Sistema completo de gestão de contratos e geração de recibos com assinatura digital**
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 [![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)](https://golang.org/)
@@ -15,7 +15,7 @@
 
 ## 📋 Sobre o Projeto
 
-O **ReciboFast** é uma Progressive Web Application (PWA) moderna desenvolvida para simplificar a gestão de aluguéis e automatizar a geração de recibos profissionais. O sistema oferece uma solução completa para proprietários de imóveis, administradoras e inquilinos.
+O **ReciboFast** é uma Progressive Web Application (PWA) moderna desenvolvida para simplificar a gestão de contratos e automatizar a geração de recibos profissionais. O sistema oferece uma solução completa para proprietários de imóveis, administradoras e inquilinos.
 
 ### ✨ Principais Funcionalidades
 
