@@ -419,7 +419,8 @@ class SignaturesService {
     canvasData: SignatureCanvasData,
     imageBlob: Blob,
     userId: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    signatureName?: string
   ): Promise<SignatureUploadResponse> {
     try {
       onProgress?.(10);
@@ -448,7 +449,7 @@ class SignaturesService {
 
       // Converter Blob para File
       const timestamp = Date.now();
-      const fileName = `canvas_signature_${userId}_${timestamp}.png`;
+      const fileName = `${signatureName?.trim() || `canvas_signature_${userId}_${timestamp}`}.png`;
       const file = new File([imageBlob], fileName, { type: 'image/png' });
 
       // Validar arquivo gerado

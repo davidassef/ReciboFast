@@ -36,6 +36,7 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [orientation, setOrientation] = useState<'default' | 'portrait'>('default');
+  const [signatureName, setSignatureName] = useState<string>('');
   const [portraitSize, setPortraitSize] = useState<{ width: number; height: number }>({ width: 360, height: 600 });
 
   // Detectar dispositivo móvel
@@ -116,7 +117,8 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
         canvasData,
         blob,
         userId,
-        (progress) => setUploadProgress(progress)
+        (progress) => setUploadProgress(progress),
+        signatureName
       );
 
       if (result.success && result.signature) {
@@ -254,6 +256,20 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
             <li>• Use os botões Desfazer/Refazer para corrigir erros</li>
             <li>• Clique em Salvar quando estiver satisfeito com o resultado</li>
           </ul>
+        </div>
+
+        {/* Nome da assinatura */}
+        <div className="p-3 bg-white rounded-lg border border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nome da assinatura (opcional)</label>
+          <input
+            type="text"
+            value={signatureName}
+            onChange={(e) => setSignatureName(e.target.value)}
+            placeholder="Ex.: Minha Assinatura, Assinatura Padrão"
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            maxLength={100}
+          />
+          <p className="text-xs text-gray-500 mt-1">Se preenchido, será usado como nome do arquivo.</p>
         </div>
 
           {/* Progress Bar */}
