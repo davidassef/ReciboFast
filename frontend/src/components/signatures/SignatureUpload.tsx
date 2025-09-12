@@ -270,6 +270,12 @@ export const SignatureUpload: React.FC<SignatureUploadProps> = ({
         : file;
       const uploadedSignature = await SignatureService.uploadSignature({ name: nameToUse, file: toSendFile, is_default: false });
       onUploadSuccess?.(uploadedSignature);
+      // Recarregar automaticamente para atualizar dropdowns/listas sem poluição visual
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location) {
+          window.location.reload();
+        }
+      }, 250);
       
       // Limpar estado
       setPreview(null);

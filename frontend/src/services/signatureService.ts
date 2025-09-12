@@ -161,22 +161,14 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Buscar no schema atual rf_signatures tentando incluir file_name; fallback sem a coluna
+    // Buscar no schema atual rf_signatures usando colunas mínimas (evita 400 se file_name não existir)
     let rfRows: any[] = [];
     try {
-      let resp = await supabase
+      const resp = await supabase
         .from('rf_signatures')
-        .select('id, file_path, file_name, created_at')
+        .select('id, file_path, created_at')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
-      if (resp.error) {
-        // Fallback quando a coluna file_name não existe no ambiente
-        resp = await supabase
-          .from('rf_signatures')
-          .select('id, file_path, created_at')
-          .eq('owner_id', user.id)
-          .order('created_at', { ascending: false });
-      }
       if (!resp.error && Array.isArray(resp.data)) rfRows = resp.data as any[];
     } catch {}
 
@@ -277,23 +269,13 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Tentar buscar também file_name; se falhar, repetir sem a coluna
-    let { data: signature, error } = await supabase
+    // Selecionar colunas mínimas (evita 400 caso file_name não exista)
+    const { data: signature, error } = await supabase
       .from('rf_signatures')
-      .select('id, file_path, file_name, created_at')
+      .select('id, file_path, created_at')
       .eq('id', id)
       .eq('owner_id', user.id)
       .single();
-    if (error) {
-      const retry = await supabase
-        .from('rf_signatures')
-        .select('id, file_path, created_at')
-        .eq('id', id)
-        .eq('owner_id', user.id)
-        .single();
-      signature = retry.data as any;
-      error = retry.error as any;
-    }
 
     if (error) {
       throw new Error(`Erro ao buscar assinatura: ${error.message}`);
@@ -332,23 +314,13 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Buscar por file_path, tentando incluir file_name
-    let { data: signature, error } = await supabase
+    // Buscar por file_path com colunas mínimas
+    const { data: signature, error } = await supabase
       .from('rf_signatures')
-      .select('id, file_path, file_name, created_at')
+      .select('id, file_path, created_at')
       .eq('owner_id', user.id)
       .eq('file_path', file_path)
       .single();
-    if (error) {
-      const retry = await supabase
-        .from('rf_signatures')
-        .select('id, file_path, created_at')
-        .eq('owner_id', user.id)
-        .eq('file_path', file_path)
-        .single();
-      signature = retry.data as any;
-      error = retry.error as any;
-    }
 
     if (error) {
       throw new Error(`Erro ao buscar assinatura por caminho: ${error.message}`);
