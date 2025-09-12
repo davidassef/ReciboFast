@@ -872,6 +872,21 @@ const Contratos: React.FC = () => {
                         placeholder="Nome completo"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ do emissor (opcional)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        value={novoContrato.issuerDocumento || ''}
+                        onChange={(e) => {
+                          const d = onlyDigits(e.target.value);
+                          const formatted = d.length <= 11 ? formatCPF(d) : formatCNPJ(d);
+                          setNovoContrato(prev => ({ ...prev, issuerDocumento: formatted }));
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -1345,6 +1360,21 @@ const Contratos: React.FC = () => {
                         onChange={(e) => setEditContrato(prev => ({ ...prev, issuerName: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Nome completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ do emissor (opcional)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        value={editContrato.issuerDocumento || ''}
+                        onChange={(e) => {
+                          const d = onlyDigits(e.target.value);
+                          const formatted = d.length <= 11 ? formatCPF(d) : formatCNPJ(d);
+                          setEditContrato(prev => ({ ...prev, issuerDocumento: formatted }));
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>

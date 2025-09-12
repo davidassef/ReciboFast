@@ -762,7 +762,8 @@ if (editEmitirOutro || editRecibo.issuerName || editRecibo.issuerDocumento) {
 const issuerName = (editRecibo.issuerName || reciboSelecionado.issuerName || '').trim();
 const issuerDoc = (editRecibo.issuerDocumento || reciboSelecionado.issuerDocumento || '').trim();
 const issuerDocDigits = onlyDigits(issuerDoc);
-const issuerDocOk = issuerDocDigits.length === 11 ? validateCPF(issuerDoc) : issuerDocDigits.length === 14 ? validateCNPJ(issuerDoc) : false;
+const docProvided = issuerDocDigits.length > 0;
+const issuerDocOk = docProvided ? (issuerDocDigits.length === 11 ? validateCPF(issuerDoc) : issuerDocDigits.length === 14 ? validateCNPJ(issuerDoc) : false) : true;
 const sigOk = !!((editRecibo.signatureDataUrl || reciboSelecionado.signatureDataUrl || '').trim());
 if (!issuerName || !issuerDocOk || !sigOk) {
 alert('Para emitir em nome de outra pessoa, informe Nome do emissor, Documento válido (CPF/CNPJ) e a Assinatura do emissor.');
@@ -954,6 +955,28 @@ setEditValorInput('');
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
                       <input value={novoRecibo.issuerName || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ do emissor (opcional)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        value={novoRecibo.issuerDocumento || ''}
+                        onChange={(e) => {
+                          const digits = onlyDigits(e.target.value);
+                          const formatted = digits.length > 11
+                            ? digits
+                                .slice(0, 14)
+                                .replace(/(\d{2})(\d)/, '$1.$2')
+                                .replace(/(\d{3})(\d)/, '$1.$2')
+                                .replace(/(\d{3})(\d)/, '$1/$2')
+                                .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+                            : formatCPF(digits);
+                          setNovoRecibo(prev => ({ ...prev, issuerDocumento: formatted }));
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
                   </div>
                 )}
@@ -1190,6 +1213,28 @@ setEditValorInput('');
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
                     <input value={editRecibo.issuerName || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ do emissor (opcional)</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                      value={editRecibo.issuerDocumento || ''}
+                      onChange={(e) => {
+                        const digits = onlyDigits(e.target.value);
+                        const formatted = digits.length > 11
+                          ? digits
+                              .slice(0, 14)
+                              .replace(/(\d{2})(\d)/, '$1.$2')
+                              .replace(/(\d{3})(\d)/, '$1.$2')
+                              .replace(/(\d{3})(\d)/, '$1/$2')
+                              .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+                          : formatCPF(digits);
+                        setEditRecibo(prev => ({ ...prev, issuerDocumento: formatted }));
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
                   </div>
                 </div>
               )}

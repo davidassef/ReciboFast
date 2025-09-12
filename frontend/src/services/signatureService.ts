@@ -112,6 +112,23 @@ export class SignatureService {
         .single();
       if (errLegacy) throw errLegacy;
       savedSignature = sigLegacy;
+
+      // Garantir que exista o registro correspondente em rf_signatures para alimentar dropdowns
+      try {
+        const { data: existingRf } = await supabase
+          .from('rf_signatures')
+          .select('id')
+          .eq('owner_id', user.id)
+          .eq('file_path', uploadData.path)
+          .maybeSingle();
+        if (!existingRf?.id) {
+          await supabase
+            .from('rf_signatures')
+            .insert({ owner_id: user.id, file_path: uploadData.path })
+            .select('id')
+            .single();
+        }
+      } catch {}
     } catch (e) {
       firstError = e;
       // Fallback: inserir registro mínimo em rf_signatures
@@ -172,25 +189,8 @@ export class SignatureService {
       if (!resp.error && Array.isArray(resp.data)) rfRows = resp.data as any[];
     } catch {}
 
-    // Buscar no schema legado signatures (tolerante a ausência)
-    let legacyRows: any[] = [];
-    try {
-      const { data } = await supabase
-        .from('signatures')
-        .select('id, file_name, file_path, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (Array.isArray(data)) legacyRows = data as any[];
-    } catch {}
-
-    // Mesclar por file_path para evitar duplicatas
-    const byPath = new Map<string, any>();
-    (rfRows || []).forEach((r: any) => byPath.set(r.file_path, { ...r, __source: 'rf' }));
-    (legacyRows || []).forEach((r: any) => {
-      if (!byPath.has(r.file_path)) byPath.set(r.file_path, { ...r, __source: 'legacy' });
-    });
-
-    const merged = Array.from(byPath.values());
+    // Usar apenas rf_signatures para alimentar dropdowns
+    const merged = Array.from((rfRows || []));
 
     // Para cada item, garantir que o id referencie rf_signatures (criando registro mínimo se necessário)
     const resolved = await Promise.all(
@@ -207,35 +207,9 @@ export class SignatureService {
           return p.toLowerCase().endsWith('.png');
         })
         .map(async (sig: any) => {
-        // Sempre resolver pelo rf_signatures com owner_id + file_path
-        let rfId: string | null = null;
-        let createdAt: string | null = sig.created_at || null;
-
-        try {
-          const { data: rf } = await supabase
-            .from('rf_signatures')
-            .select('id, created_at')
-            .eq('owner_id', user.id)
-            .eq('file_path', sig.file_path)
-            .maybeSingle();
-          if (rf?.id) {
-            rfId = rf.id;
-            createdAt = rf.created_at || createdAt;
-          }
-        } catch {}
-
-        if (!rfId) {
-          // Criar registro mínimo
-          const { data: inserted } = await supabase
-            .from('rf_signatures')
-            .insert({ owner_id: user.id, file_path: sig.file_path })
-            .select('id, created_at')
-            .single();
-          if (inserted?.id) {
-            rfId = inserted.id;
-            createdAt = inserted.created_at || createdAt;
-          }
-        }
+        // Dados base vindos do próprio rf_signatures
+        const rfId: string = sig.id;
+        const createdAt: string | null = sig.created_at || null;
 
         // URL assinada/pública para preview (pular se nenhuma disponível)
         let previewUrl: string | null = null;
@@ -251,11 +225,11 @@ export class SignatureService {
           return null; // Ignora itens sem URL válida
         }
 
-        const fileNameWithExt = sig.file_path.split('/').pop() || 'assinatura.png';
-        const displayName = (sig as any).file_name || fileNameWithExt;
+        const fileNameWithExt = (sig.file_path as string).split('/').pop() || 'assinatura.png';
+        const displayName = fileNameWithExt;
 
         return {
-          id: rfId!,
+          id: rfId,
           name: displayName,
           display_name: displayName,
           thumbnail_url: previewUrl,
