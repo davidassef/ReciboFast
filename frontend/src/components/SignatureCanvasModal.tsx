@@ -35,6 +35,8 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [orientation, setOrientation] = useState<'default' | 'portrait'>('default');
+  const [portraitSize, setPortraitSize] = useState<{ width: number; height: number }>({ width: 360, height: 600 });
 
   // Detectar dispositivo móvel
   useEffect(() => {
@@ -45,6 +47,43 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Tentar bloquear/desbloquear orientação (quando permitido pelo navegador)
+  useEffect(() => {
+    return () => {
+      try {
+        // Desbloquear ao desmontar
+        // @ts-ignore
+        if (screen.orientation && (screen.orientation as any).unlock) {
+          // @ts-ignore
+          (screen.orientation as any).unlock();
+        }
+        if (document.fullscreenElement) {
+          document.exitFullscreen?.();
+        }
+      } catch {}
+    };
+  }, []);
+
+  // Calcular dimensões dinâmicas do canvas em modo retrato (mobile)
+  useEffect(() => {
+    if (!isMobile || orientation !== 'portrait') return;
+    const compute = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Margens internas aproximadas do modal + espaçamentos
+      const horizontalPadding = 32; // px
+      const verticalPaddingAndUI = 200; // header + instruções + controles + paddings
+      const maxW = Math.min(Math.floor(vw * 0.95), 480);
+      const maxH = Math.max(220, Math.min(Math.floor(vh - verticalPaddingAndUI), 800));
+      const width = Math.max(280, maxW - horizontalPadding);
+      const height = maxH;
+      setPortraitSize({ width, height });
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, [isMobile, orientation]);
   
   const canvas = useSignatureCanvas({
     width,
@@ -152,17 +191,57 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
         } text-gray-900`}>
           {isMobile ? 'Assinatura Digital' : title}
         </h2>
-        <button
-          onClick={handleCancel}
-          className={`p-0 hover:bg-gray-100 rounded-full transition-colors ${
-            isMobile ? 'h-8 w-8' : 'h-6 w-6'
-          }`}
-          disabled={isSaving}
-        >
-          <X className={`${
-            isMobile ? 'h-5 w-5' : 'h-4 w-4'
-          }`} />
-        </button>
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  if (orientation === 'default') {
+                    // Tenta entrar em fullscreen + bloquear em retrato
+                    const el: any = document.documentElement;
+                    if (el.requestFullscreen) await el.requestFullscreen();
+                    // @ts-ignore
+                    if (screen.orientation && screen.orientation.lock) {
+                      // @ts-ignore
+                      await screen.orientation.lock('portrait');
+                    }
+                    setOrientation('portrait');
+                  } else {
+                    // Desbloqueia e sai do fullscreen
+                    // @ts-ignore
+                    if (screen.orientation && (screen.orientation as any).unlock) {
+                      // @ts-ignore
+                      (screen.orientation as any).unlock();
+                    }
+                    if (document.fullscreenElement) {
+                      await document.exitFullscreen?.();
+                    }
+                    setOrientation('default');
+                  }
+                } catch {
+                  // Fallback: apenas alterna o estado para ajustar layout
+                  setOrientation(prev => prev === 'default' ? 'portrait' : 'default');
+                }
+              }}
+              className={isMobile ? 'h-8 px-2 text-xs' : 'h-8 px-3 text-xs'}
+            >
+              {orientation === 'default' ? 'Vertical' : 'Horizontal'}
+            </Button>
+          )}
+          <button
+            onClick={handleCancel}
+            className={`p-0 hover:bg-gray-100 rounded-full transition-colors ${
+              isMobile ? 'h-8 w-8' : 'h-6 w-6'
+            }`}
+            disabled={isSaving}
+          >
+            <X className={`${
+              isMobile ? 'h-5 w-5' : 'h-4 w-4'
+            }`} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4">
@@ -203,8 +282,8 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
           {/* Canvas Area */}
           <div className="border border-gray-300 rounded-lg p-4 bg-white">
             <SignatureCanvas
-              width={isMobile ? 350 : width}
-              height={isMobile ? 200 : height}
+              width={isMobile ? (orientation === 'portrait' ? portraitSize.width : 350) : width}
+              height={isMobile ? (orientation === 'portrait' ? portraitSize.height : 200) : height}
               disabled={disabled || isSaving}
               onStrokeComplete={handleStrokeComplete}
               className="mx-auto"

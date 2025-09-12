@@ -84,63 +84,65 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   }, [disabled, stopDrawing, onStrokeComplete]);
 
   // Touch event handlers (otimizados para mobile)
-  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
-    if (disabled) return;
-    
-    if (event.cancelable) event.preventDefault();
-    // Prevenir zoom e scroll no mobile
-    document.body.style.overflow = 'hidden';
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const touch = event.touches[0];
-    if (!touch) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const point: Point = {
-      x: (touch.clientX - rect.left) * scaleX,
-      y: (touch.clientY - rect.top) * scaleY,
-      timestamp: Date.now()
+    const onTouchStart = (ev: TouchEvent) => {
+      if (disabled) return;
+      if (ev.cancelable) ev.preventDefault();
+      document.body.style.overflow = 'hidden';
+      const touch = ev.touches[0];
+      if (!touch) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const point: Point = {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+        timestamp: Date.now()
+      };
+      startDrawing(point);
     };
 
-    startDrawing(point);
-  }, [disabled, startDrawing, canvasRef]);
-
-  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
-    if (disabled || !isDrawing) return;
-    
-    if (event.cancelable) event.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const touch = event.touches[0];
-    if (!touch) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const point: Point = {
-      x: (touch.clientX - rect.left) * scaleX,
-      y: (touch.clientY - rect.top) * scaleY,
-      timestamp: Date.now()
+    const onTouchMove = (ev: TouchEvent) => {
+      if (disabled || !isDrawing) return;
+      if (ev.cancelable) ev.preventDefault();
+      const touch = ev.touches[0];
+      if (!touch) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const point: Point = {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+        timestamp: Date.now()
+      };
+      draw(point);
     };
 
-    draw(point);
-  }, [disabled, isDrawing, draw, canvasRef]);
+    const onTouchEnd = (ev: TouchEvent) => {
+      if (disabled) return;
+      if (ev.cancelable) ev.preventDefault();
+      document.body.style.overflow = '';
+      stopDrawing();
+      onStrokeComplete?.();
+    };
 
-  const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
-    if (disabled) return;
-    
-    if (event.cancelable) event.preventDefault();
-    // Restaurar scroll no mobile
-    document.body.style.overflow = '';
-    stopDrawing();
-    onStrokeComplete?.();
-  }, [disabled, stopDrawing, onStrokeComplete]);
+    // Bind com passive:false para permitir preventDefault sem warnings
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart as EventListener);
+      canvas.removeEventListener('touchmove', onTouchMove as EventListener);
+      canvas.removeEventListener('touchend', onTouchEnd as EventListener);
+      canvas.removeEventListener('touchcancel', onTouchEnd as EventListener);
+      document.body.style.overflow = '';
+    };
+  }, [canvasRef, disabled, isDrawing, startDrawing, draw, stopDrawing, onStrokeComplete]);
 
   // Prevent context menu on right click
   const handleContextMenu = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -174,10 +176,6 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp} // Stop drawing when mouse leaves canvas
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd} // Stop drawing when touch is cancelled
         onContextMenu={handleContextMenu}
         tabIndex={disabled ? -1 : 0}
         aria-label="Área de assinatura digital"
