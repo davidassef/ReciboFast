@@ -971,6 +971,74 @@ const Contratos: React.FC = () => {
                   )}
                 </div>
               </div>
+              {/* Logo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
+                <div className="flex items-center gap-3">
+                  <input id="contrato-use-logo" type="checkbox" className="h-4 w-4" checked={!!novoContrato.useLogo} onChange={(e) => setNovoContrato(prev => ({ ...prev, useLogo: e.target.checked }))} />
+                  <label htmlFor="contrato-use-logo" className="text-sm text-gray-700">Exibir logo da sua conta</label>
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  {logoOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={novoContrato.logoUrl || ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__create_logo__') { navigate('/assinaturas'); return; }
+                          setNovoContrato(prev => ({ ...prev, logoUrl: v || undefined }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                        disabled={!novoContrato.useLogo}
+                      >
+                        <option value="">Selecione</option>
+                        {logoOptions.map(opt => (
+                          <option key={opt.path} value={opt.url}>{opt.name}</option>
+                        ))}
+                        <option value="__create_logo__">Cadastrar Nova Logo</option>
+                      </select>
+                      {(novoContrato.logoUrl || defaultLogoUrl) && (
+                        <img src={(novoContrato.logoUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
+                  ) : (
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm"
+                      disabled={!novoContrato.useLogo}
+                    >
+                      <option value="__create_logo__">Cadastrar Nova Logo</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+              {/* Emitir em nome de outra pessoa */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={novoEmitirOutro || !!novoContrato.issuerName}
+                    onChange={(e) => setNovoEmitirOutro(e.target.checked)}
+                  />
+                  Emitir em nome de outra pessoa
+                </label>
+                {(novoEmitirOutro || !!novoContrato.issuerName) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input
+                        type="text"
+                        value={novoContrato.issuerName || ''}
+                        onChange={(e) => setNovoContrato(prev => ({ ...prev, issuerName: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               {/* Objetivo do contrato */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo do contrato</label>
@@ -1202,6 +1270,74 @@ const Contratos: React.FC = () => {
                     <span className="text-xs text-gray-500">Nenhuma assinatura cadastrada. Cadastre em Perfil.</span>
                   ))}
                 </div>
+              </div>
+              {/* Logo (edição) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
+                <div className="flex items-center gap-3">
+                  <input id="contrato-edit-use-logo" type="checkbox" className="h-4 w-4" checked={!!editContrato.useLogo} onChange={(e) => setEditContrato(prev => ({ ...prev, useLogo: e.target.checked }))} />
+                  <label htmlFor="contrato-edit-use-logo" className="text-sm text-gray-700">Exibir logo da sua conta</label>
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  {logoOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={editContrato.logoUrl || ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__create_logo__') { navigate('/assinaturas'); return; }
+                          setEditContrato(prev => ({ ...prev, logoUrl: v || undefined }));
+                        }}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                        disabled={!editContrato.useLogo}
+                      >
+                        <option value="">Selecione</option>
+                        {logoOptions.map(opt => (
+                          <option key={opt.path} value={opt.url}>{opt.name}</option>
+                        ))}
+                        <option value="__create_logo__">Cadastrar Nova Logo</option>
+                      </select>
+                      {(editContrato.logoUrl || defaultLogoUrl) && (
+                        <img src={(editContrato.logoUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                      )}
+                    </>
+                  ) : (
+                    <select
+                      value={''}
+                      onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
+                      className="px-3 py-2 border rounded-lg text-sm"
+                      disabled={!editContrato.useLogo}
+                    >
+                      <option value="__create_logo__">Cadastrar Nova Logo</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+              {/* Emitir em nome de outra pessoa (edição) */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editEmitirOutro || !!editContrato.issuerName}
+                    onChange={(e) => setEditEmitirOutro(e.target.checked)}
+                  />
+                  Emitir em nome de outra pessoa
+                </label>
+                {(editEmitirOutro || !!editContrato.issuerName) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input
+                        type="text"
+                        value={editContrato.issuerName || ''}
+                        onChange={(e) => setEditContrato(prev => ({ ...prev, issuerName: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Objetivo do contrato (edição) */}
               <div>

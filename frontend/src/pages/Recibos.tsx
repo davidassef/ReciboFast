@@ -668,7 +668,7 @@ h1{font-size:22px;letter-spacing:.5px;margin:0}
 .row{display:flex;justify-content:space-between;gap:12px}
 .muted{color:var(--muted)}
 .signature{margin-top:32px;text-align:center}
-.signature img{max-height:80px;object-fit:contain;margin-bottom:0}
+.signature img{max-height:80px;object-fit:contain;margin-bottom:0;display:block;margin-left:auto;margin-right:auto}
 .signature .line{border-top:1px solid var(--border);margin-top:8px}
 .center{text-align:center}
 </style>
@@ -708,21 +708,21 @@ ${recibo.signatureDataUrl ? `<img src="${recibo.signatureDataUrl}" alt="Assinatu
   };
 
   const handleDownloadRecibo = async (recibo: Recibo) => {
-let toPrint = { ...recibo } as Recibo;
-// Se temos ID mas não URL, resolve antes de imprimir
-if (toPrint.signatureId && !toPrint.signatureDataUrl) {
-try {
-const preview = await SignatureService.getSignatureById(toPrint.signatureId);
-toPrint.signatureDataUrl = preview.url;
-} catch (err) {
-console.warn('Não foi possível resolver URL da assinatura por ID:', err);
-}
-}
-const win = window.open('', '_blank');
-if (!win) return;
-win.document.open();
-win.document.write(generatePrintableHtml(toPrint));
-win.document.close();
+  let toPrint = { ...recibo } as Recibo;
+  // Sempre renova a URL assinada quando há signatureId (evita token expirado)
+  if (toPrint.signatureId) {
+    try {
+      const preview = await SignatureService.getSignatureById(toPrint.signatureId);
+      toPrint.signatureDataUrl = preview.url;
+    } catch (err) {
+      console.warn('Não foi possível resolver URL da assinatura por ID:', err);
+    }
+  }
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.open();
+  win.document.write(generatePrintableHtml(toPrint));
+  win.document.close();
 };
 
   const handleShareRecibo = async (recibo: Recibo) => {
@@ -940,7 +940,7 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={novoRecibo.numero || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="RB-001" />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 py-1">
                 <input id="novoEmitirOutro" type="checkbox" className="h-4 w-4" checked={novoEmitirOutro} onChange={(e) => {
                   const checked = e.target.checked;
                   setNovoEmitirOutro(checked);
@@ -955,10 +955,6 @@ setEditValorInput('');
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
                     <input value={novoRecibo.issuerName || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome completo" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Documento</label>
-                    <input value={novoRecibo.issuerDocumento || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerDocumento: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="CPF/CNPJ" />
                   </div>
                 </div>
               )}
@@ -1255,7 +1251,7 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={editRecibo.numero || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 py-1">
                 <input id="editEmitirOutro" type="checkbox" className="h-4 w-4" checked={editEmitirOutro} onChange={(e) => {
                   const checked = e.target.checked;
                   setEditEmitirOutro(checked);
@@ -1270,10 +1266,6 @@ setEditValorInput('');
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
                     <input value={editRecibo.issuerName || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Documento</label>
-                    <input value={editRecibo.issuerDocumento || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, issuerDocumento: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                   </div>
                 </div>
               )}

@@ -613,29 +613,7 @@ const Perfil: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Phone className="w-5 h-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">SMS</p>
-                        <p className="text-sm text-gray-500">Receber notificações por SMS</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleNotificationChange('sms')}
-                      className={cn(
-                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                        notificacoes.sms ? 'bg-blue-600' : 'bg-gray-200'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                          notificacoes.sms ? 'translate-x-6' : 'translate-x-1'
-                        )}
-                      />
-                    </button>
-                  </div>
+                  {/* SMS removido: serviço não será oferecido */}
                 </div>
               </div>
             </div>

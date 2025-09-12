@@ -79,15 +79,12 @@ export class SignatureService {
       throw new Error(`Erro no upload: ${uploadError.message}`);
     }
 
-    // Salvar metadados no banco (usar colunas existentes: owner_id, file_name, file_path, file_size, mime_type)
+    // Inserção mínima (compatível com esquemas sem colunas adicionais)
     const { data: signature, error: dbError } = await supabase
       .from('rf_signatures')
       .insert({
         owner_id: user.id,
-        file_path: uploadData.path,
-        file_size: file.size,
-        // Compatível com CHECK (mime_type IS NULL OR mime_type = 'image/png') na migration 007
-        mime_type: file.type === 'image/png' ? 'image/png' : null
+        file_path: uploadData.path
       })
       .select()
       .single();
@@ -97,6 +94,19 @@ export class SignatureService {
       await supabase.storage.from(this.BUCKET_NAME).remove([fileName]);
       throw new Error(`Erro ao salvar assinatura: ${dbError.message}`);
     }
+
+    // Atualizações opcionais e tolerantes a coluna inexistente
+    try {
+      // file_size e mime_type (se existirem)
+      await supabase
+        .from('rf_signatures')
+        .update({
+          file_size: file.size,
+          mime_type: file.type === 'image/png' ? 'image/png' : null
+        })
+        .eq('id', signature.id)
+        .eq('owner_id', user.id);
+    } catch {}
 
     // Se um nome amigável foi fornecido, tenta atualizar (ignora se coluna não existir)
     if (isForm && (signatureData as SignatureUpload).name) {
@@ -226,11 +236,20 @@ export class SignatureService {
       throw new Error(`Erro ao buscar assinatura: ${error.message}`);
     }
 
-    // Usar URL pública para preview (evita expiração)
-    const { data: urlData } = supabase.storage
-      .from(this.BUCKET_NAME)
-      .getPublicUrl(signature.file_path);
-    const url = urlData.publicUrl;
+    // Preferir URL assinada recente (reduz chance de expiração durante impressão), fallback para pública
+    let url: string = '';
+    try {
+      const signed = await supabase.storage
+        .from(this.BUCKET_NAME)
+        .createSignedUrl(signature.file_path, 60 * 5);
+      url = signed.data?.signedUrl || '';
+    } catch {}
+    if (!url) {
+      const { data: urlData } = supabase.storage
+        .from(this.BUCKET_NAME)
+        .getPublicUrl(signature.file_path);
+      url = urlData.publicUrl;
+    }
 
     return {
       id: signature.id,
