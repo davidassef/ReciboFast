@@ -79,45 +79,79 @@ export class SignatureService {
       throw new Error(`Erro no upload: ${uploadError.message}`);
     }
 
-    // Inserção mínima (compatível com esquemas sem colunas adicionais)
-    const { data: signature, error: dbError } = await supabase
-      .from('rf_signatures')
-      .insert({
-        owner_id: user.id,
-        file_path: uploadData.path
-      })
-      .select()
-      .single();
+    // Tentar inserir na tabela legada 'signatures' (mais permissiva com RLS)
+    let savedSignature: any | null = null;
+    let firstError: any = null;
 
-    if (dbError) {
-      // Remover arquivo do storage se falhou no banco
-      await supabase.storage.from(this.BUCKET_NAME).remove([fileName]);
-      throw new Error(`Erro ao salvar assinatura: ${dbError.message}`);
-    }
-
-    // Atualizações opcionais e tolerantes a coluna inexistente
+    // Obter dimensões da imagem
+    let widthPx = 0, heightPx = 0;
     try {
-      // file_size e mime_type (se existirem)
-      await supabase
-        .from('rf_signatures')
-        .update({
-          file_size: file.size,
-          mime_type: file.type === 'image/png' ? 'image/png' : null
-        })
-        .eq('id', signature.id)
-        .eq('owner_id', user.id);
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Imagem inválida'));
+        image.src = URL.createObjectURL(file);
+      });
+      widthPx = img.width; heightPx = img.height;
     } catch {}
 
-    // Se um nome amigável foi fornecido, tenta atualizar (ignora se coluna não existir)
-    if (isForm && (signatureData as SignatureUpload).name) {
-      try {
-        await this.updateSignatureName(signature.id, (signatureData as SignatureUpload).name);
-      } catch {
-        // Ignora falha de coluna inexistente
+    try {
+      const { data: sigLegacy, error: errLegacy } = await supabase
+        .from('signatures')
+        .insert({
+          user_id: user.id,
+          file_name: originalName,
+          file_path: uploadData.path,
+          file_size: file.size,
+          mime_type: file.type,
+          width: widthPx || null,
+          height: heightPx || null,
+          is_active: true
+        })
+        .select()
+        .single();
+      if (errLegacy) throw errLegacy;
+      savedSignature = sigLegacy;
+    } catch (e) {
+      firstError = e;
+      // Fallback: inserir registro mínimo em rf_signatures
+      const { data: sigRf, error: errRf } = await supabase
+        .from('rf_signatures')
+        .insert({ owner_id: user.id, file_path: uploadData.path })
+        .select()
+        .single();
+      if (errRf) {
+        // Remover arquivo do storage se falhou em ambas as inserções
+        await supabase.storage.from(this.BUCKET_NAME).remove([fileName]);
+        throw new Error(`Erro ao salvar assinatura: ${(firstError?.message || '')} ${errRf.message}`.trim());
       }
+      savedSignature = sigRf;
+      // Atualizações opcionais e tolerantes em rf_signatures
+      try {
+        await supabase
+          .from('rf_signatures')
+          .update({ file_size: file.size, mime_type: file.type === 'image/png' ? 'image/png' : null, width_px: widthPx || null, height_px: heightPx || null })
+          .eq('id', sigRf.id)
+          .eq('owner_id', user.id);
+      } catch {}
     }
 
-    return signature;
+    // Atualizar nome amigável quando disponível (ambas as tabelas)
+    if (isForm && (signatureData as SignatureUpload).name) {
+      try {
+        // Tenta legacy
+        await supabase
+          .from('signatures')
+          .update({ file_name: (signatureData as SignatureUpload).name })
+          .eq('file_path', uploadData.path)
+          .eq('user_id', user.id);
+      } catch {}
+      try {
+        await this.updateSignatureName(savedSignature.id, (signatureData as SignatureUpload).name);
+      } catch {}
+    }
+
+    return savedSignature as Signature;
   }
 
   /**
