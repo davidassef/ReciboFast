@@ -1337,8 +1337,14 @@ setEditValorInput('');
                         ))}
                         <option value="__create_logo__">Cadastrar Nova Logo</option>
                       </select>
-                      {(editRecibo.logoDataUrl || defaultLogoUrl) && (
-                        <button type="button" onClick={() => { setLogoPreviewUrl((editRecibo.logoDataUrl || defaultLogoUrl) as string); setShowLogoPreview(true); }} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Pré-visualizar logo</button>
+                      {!!editRecibo.logoDataUrl && (
+                        <button
+                          type="button"
+                          onClick={() => { setLogoPreviewUrl(editRecibo.logoDataUrl as string); setShowLogoPreview(true); }}
+                          className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                        >
+                          Pré-visualizar logo
+                        </button>
                       )}
                     </>
                   ) : (
@@ -1392,8 +1398,14 @@ setEditValorInput('');
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {(editUseSignature && (editRecibo.signatureDataUrl || defaultSignatureUrl)) && (
-                        <button type="button" onClick={() => { setSignaturePreviewUrl((editRecibo.signatureDataUrl || defaultSignatureUrl) as string); setShowSignaturePreview(true); }} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Pré-visualizar assinatura</button>
+                      {(editUseSignature && !!editRecibo.signatureId && !!editRecibo.signatureDataUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => { setSignaturePreviewUrl(editRecibo.signatureDataUrl as string); setShowSignaturePreview(true); }}
+                          className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                        >
+                          Pré-visualizar assinatura
+                        </button>
                       )}
                     </>
                   ) : (
