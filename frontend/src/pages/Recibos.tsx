@@ -940,24 +940,26 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={novoRecibo.numero || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="RB-001" />
               </div>
-              <div className="flex items-center gap-2 py-1">
-                <input id="novoEmitirOutro" type="checkbox" className="h-4 w-4" checked={novoEmitirOutro} onChange={(e) => {
-                  const checked = e.target.checked;
-                  setNovoEmitirOutro(checked);
-                  if (!checked) {
-                    setNovoRecibo(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
-                  }
-                }} />
-                <label htmlFor="novoEmitirOutro" className="text-sm text-gray-700 select-none">Emitir em nome de outra pessoa</label>
-              </div>
-              {novoEmitirOutro && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
-                    <input value={novoRecibo.issuerName || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome completo" />
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
+                  <input id="novoEmitirOutro" type="checkbox" className="h-4 w-4" checked={novoEmitirOutro} onChange={(e) => {
+                    const checked = e.target.checked;
+                    setNovoEmitirOutro(checked);
+                    if (!checked) {
+                      setNovoRecibo(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined, signatureDataUrl: undefined }));
+                    }
+                  }} />
+                  Emitir em nome de outra pessoa
+                </label>
+                {novoEmitirOutro && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input value={novoRecibo.issuerName || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome completo" />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input value={novoRecibo.cliente || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, cliente: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome do cliente" />
@@ -984,86 +986,7 @@ setEditValorInput('');
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              {/* Emitir em nome de outra pessoa */}
-              <div className="border rounded-lg p-3 space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={novoEmitirOutro}
-                    onChange={(e) => setNovoEmitirOutro(e.target.checked)}
-                  />
-                  Emitir em nome de outra pessoa
-                </label>
-                {novoEmitirOutro && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
-                      <input
-                        type="text"
-                        value={novoRecibo.issuerName || ''}
-                        onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nome completo"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Documento do emissor</label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                        value={novoRecibo.issuerDocumento || ''}
-                        onChange={(e) => {
-                          const digits = onlyDigits(e.target.value);
-                          const formatted = digits.length > 11
-                            ? digits
-                                .slice(0, 14)
-                                .replace(/(\d{2})(\d)/, '$1.$2')
-                                .replace(/(\d{3})(\d)/, '$1.$2')
-                                .replace(/(\d{3})(\d)/, '$1/$2')
-                                .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
-                            : formatCPF(digits);
-                          setNovoRecibo(prev => ({ ...prev, issuerDocumento: formatted }));
-                        }}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Assinatura do emissor (imagem)</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          let uploadFile = file;
-                          const lower = (file.name||'').toLowerCase();
-                          const isHeic = file.type.includes('heic') || file.type.includes('heif') || lower.endsWith('.heic') || lower.endsWith('.heif');
-                          if (isHeic) {
-                            try {
-                              const heic2any = (await import('heic2any')).default as any;
-                              const conv = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-                              const blob: Blob = Array.isArray(conv) ? conv[0] : conv;
-                              uploadFile = new File([blob], (file.name.replace(/\.[^.]+$/, '')||'assinatura')+'.jpg', { type: 'image/jpeg' });
-                            } catch {}
-                          }
-                          const reader = new FileReader();
-                          reader.onload = () => setNovoRecibo(prev => ({ ...prev, signatureDataUrl: String(reader.result||'') }));
-                          reader.readAsDataURL(uploadFile);
-                        }}
-                        className="w-full px-3 py-2 border rounded-lg"
-                      />
-                      <div className="mt-2">
-                        <button type="button" onClick={() => { setShowSignCanvas('novo'); setCanvasKey(k => k + 1); }} className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">Assinar no touch</button>
-                      </div>
-                      {novoRecibo.signatureDataUrl && (
-                        <img src={novoRecibo.signatureDataUrl} alt="Assinatura do emissor" className="h-10 object-contain border rounded bg-white px-2 mt-2" />
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
                 <input

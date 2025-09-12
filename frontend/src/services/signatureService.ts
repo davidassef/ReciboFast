@@ -127,14 +127,22 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Buscar no schema atual rf_signatures SEM file_name (evita 400 em ambientes sem a coluna)
+    // Buscar no schema atual rf_signatures tentando incluir file_name; fallback sem a coluna
     let rfRows: any[] = [];
     try {
-      const resp = await supabase
+      let resp = await supabase
         .from('rf_signatures')
-        .select('id, file_path, created_at')
+        .select('id, file_path, file_name, created_at')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
+      if (resp.error) {
+        // Fallback quando a coluna file_name não existe no ambiente
+        resp = await supabase
+          .from('rf_signatures')
+          .select('id, file_path, created_at')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false });
+      }
       if (!resp.error && Array.isArray(resp.data)) rfRows = resp.data as any[];
     } catch {}
 
@@ -199,7 +207,7 @@ export class SignatureService {
         const publicUrl = urlData.publicUrl;
 
         const fileNameWithExt = sig.file_path.split('/').pop() || 'assinatura.png';
-        const displayName = sig.file_name || fileNameWithExt;
+        const displayName = (sig as any).file_name || fileNameWithExt;
 
         return {
           id: rfId!,
@@ -224,13 +232,23 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data: signature, error } = await supabase
+    // Tentar buscar também file_name; se falhar, repetir sem a coluna
+    let { data: signature, error } = await supabase
       .from('rf_signatures')
-      // Compatível com esquemas sem file_name
-      .select('id, file_path, created_at')
+      .select('id, file_path, file_name, created_at')
       .eq('id', id)
       .eq('owner_id', user.id)
       .single();
+    if (error) {
+      const retry = await supabase
+        .from('rf_signatures')
+        .select('id, file_path, created_at')
+        .eq('id', id)
+        .eq('owner_id', user.id)
+        .single();
+      signature = retry.data as any;
+      error = retry.error as any;
+    }
 
     if (error) {
       throw new Error(`Erro ao buscar assinatura: ${error.message}`);
@@ -253,7 +271,7 @@ export class SignatureService {
 
     return {
       id: signature.id,
-      name: signature.file_path.split('/').pop() || 'Assinatura',
+      name: (signature as any).file_name || signature.file_path.split('/').pop() || 'Assinatura',
       url,
       is_default: false,
       file_size: 0,
@@ -269,13 +287,23 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data: signature, error } = await supabase
+    // Buscar por file_path, tentando incluir file_name
+    let { data: signature, error } = await supabase
       .from('rf_signatures')
-      // Compatível com esquemas sem file_name
-      .select('id, file_path, created_at')
+      .select('id, file_path, file_name, created_at')
       .eq('owner_id', user.id)
       .eq('file_path', file_path)
       .single();
+    if (error) {
+      const retry = await supabase
+        .from('rf_signatures')
+        .select('id, file_path, created_at')
+        .eq('owner_id', user.id)
+        .eq('file_path', file_path)
+        .single();
+      signature = retry.data as any;
+      error = retry.error as any;
+    }
 
     if (error) {
       throw new Error(`Erro ao buscar assinatura por caminho: ${error.message}`);
@@ -288,7 +316,7 @@ export class SignatureService {
 
     return {
       id: signature.id,
-      name: signature.file_name || signature.file_path.split('/').pop() || 'Assinatura',
+      name: (signature as any).file_name || signature.file_path.split('/').pop() || 'Assinatura',
       url,
       is_default: false,
       file_size: 0,
