@@ -286,6 +286,7 @@ export const SignatureCanvasModal: React.FC<SignatureCanvasModalProps> = ({
               height={isMobile ? (orientation === 'portrait' ? portraitSize.height : 200) : height}
               disabled={disabled || isSaving}
               onStrokeComplete={handleStrokeComplete}
+              canvas={canvas}
               className="mx-auto"
             />
           </div>

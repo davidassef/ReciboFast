@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useSignatureCanvas, UseSignatureCanvasOptions } from '../hooks/useSignatureCanvas';
+import type { UseSignatureCanvasReturn } from '../hooks/useSignatureCanvas';
 import { Point } from '../types/signature';
 import { cn } from '../lib/utils';
 
@@ -8,6 +9,7 @@ export interface SignatureCanvasProps extends UseSignatureCanvasOptions {
   disabled?: boolean;
   onSignatureChange?: (isEmpty: boolean) => void;
   onStrokeComplete?: () => void;
+  canvas?: UseSignatureCanvasReturn; // instância externa opcional
 }
 
 export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
@@ -15,8 +17,11 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   disabled = false,
   onSignatureChange,
   onStrokeComplete,
+  canvas: externalCanvas,
   ...canvasOptions
 }) => {
+  const internal = useSignatureCanvas(canvasOptions);
+  const canvasApi = externalCanvas ?? internal;
   const {
     canvasRef,
     isDrawing,
@@ -24,7 +29,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     startDrawing,
     draw,
     stopDrawing
-  } = useSignatureCanvas(canvasOptions);
+  } = canvasApi;
 
   // Detectar se é dispositivo móvel
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
