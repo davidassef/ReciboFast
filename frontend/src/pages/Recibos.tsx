@@ -183,20 +183,7 @@ const Recibos: React.FC = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Bloqueia scroll do body/html quando qualquer modal desta página estiver aberto
-  useEffect(() => {
-    const anyModalOpen = showNovoRecibo || showViewRecibo || showEditRecibo || showDeleteRecibo || !!showSignCanvas;
-    if (anyModalOpen) {
-      const origBody = document.body.style.overflow;
-      const origHtml = document.documentElement.style.overflow;
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = origBody;
-        document.documentElement.style.overflow = origHtml;
-      };
-    }
-  }, [showNovoRecibo, showViewRecibo, showEditRecibo, showDeleteRecibo, showSignCanvas]);
+  // Removido lock global de scroll. O componente Modal já gerencia o scroll lock de forma consistente.
 
   // Inicialização do canvas de assinatura quando o modal está aberto
   useEffect(() => {
@@ -681,8 +668,8 @@ h1{font-size:22px;letter-spacing:.5px;margin:0}
 .row{display:flex;justify-content:space-between;gap:12px}
 .muted{color:var(--muted)}
 .signature{margin-top:32px;text-align:center}
-.signature img{max-height:80px;object-fit:contain;margin-bottom:8px}
-.signature .line{border-top:1px solid var(--border);margin-top:24px}
+.signature img{max-height:80px;object-fit:contain;margin-bottom:0}
+.signature .line{border-top:1px solid var(--border);margin-top:8px}
 .center{text-align:center}
 </style>
 `;
@@ -752,6 +739,7 @@ win.document.close();
 setReciboSelecionado(recibo);
 setEditRecibo({ ...recibo });
 setEditValorInput(formatNumberToCurrencyBR(recibo.valor));
+setEditEmitirOutro(!!(recibo.issuerName || recibo.issuerDocumento));
 setShowEditRecibo(true);
 };
 
@@ -952,6 +940,28 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={novoRecibo.numero || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="RB-001" />
               </div>
+              <div className="flex items-center gap-2">
+                <input id="novoEmitirOutro" type="checkbox" className="h-4 w-4" checked={novoEmitirOutro} onChange={(e) => {
+                  const checked = e.target.checked;
+                  setNovoEmitirOutro(checked);
+                  if (!checked) {
+                    setNovoRecibo(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
+                  }
+                }} />
+                <label htmlFor="novoEmitirOutro" className="text-sm text-gray-700 select-none">Emitir em nome de outra pessoa</label>
+              </div>
+              {novoEmitirOutro && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                    <input value={novoRecibo.issuerName || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome completo" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Documento</label>
+                    <input value={novoRecibo.issuerDocumento || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, issuerDocumento: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="CPF/CNPJ" />
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input value={novoRecibo.cliente || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, cliente: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome do cliente" />
@@ -1245,6 +1255,28 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={editRecibo.numero || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
+              <div className="flex items-center gap-2">
+                <input id="editEmitirOutro" type="checkbox" className="h-4 w-4" checked={editEmitirOutro} onChange={(e) => {
+                  const checked = e.target.checked;
+                  setEditEmitirOutro(checked);
+                  if (!checked) {
+                    setEditRecibo(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
+                  }
+                }} />
+                <label htmlFor="editEmitirOutro" className="text-sm text-gray-700 select-none">Emitir em nome de outra pessoa</label>
+              </div>
+              {editEmitirOutro && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                    <input value={editRecibo.issuerName || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, issuerName: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Documento</label>
+                    <input value={editRecibo.issuerDocumento || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, issuerDocumento: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input value={editRecibo.cliente || ''} onChange={(e) => setEditRecibo(prev => ({ ...prev, cliente: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
