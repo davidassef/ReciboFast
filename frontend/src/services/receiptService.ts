@@ -346,6 +346,23 @@ export class ReceiptService {
       }
     }
 
+    // Validar signature_id para evitar FK 409 (apenas se realmente existir em rf_signatures)
+    let validatedSignatureId: string | null = formData.signature_id || null;
+    if (validatedSignatureId) {
+      try {
+        const { data: sigCheck } = await supabase
+          .from('rf_signatures')
+          .select('id')
+          .eq('id', validatedSignatureId)
+          .maybeSingle();
+        if (!sigCheck?.id) {
+          validatedSignatureId = null;
+        }
+      } catch {
+        validatedSignatureId = null;
+      }
+    }
+
     // Inserir recibo no banco
     const { data: receipt, error: insertError } = await supabase
       .from('rf_receipts')
@@ -359,7 +376,7 @@ export class ReceiptService {
         description: formData.description,
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
-        signature_id: formData.signature_id,
+        signature_id: validatedSignatureId,
         qr_code: qrCode,
         status: 'generated'
       })

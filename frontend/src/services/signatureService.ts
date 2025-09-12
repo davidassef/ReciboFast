@@ -117,22 +117,14 @@ export class SignatureService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Buscar no schema atual rf_signatures tentando incluir file_name; fallback se coluna não existir
+    // Buscar no schema atual rf_signatures SEM file_name (evita 400 em ambientes sem a coluna)
     let rfRows: any[] = [];
     try {
-      let resp = await supabase
+      const resp = await supabase
         .from('rf_signatures')
-        .select('id, file_path, file_name, created_at')
+        .select('id, file_path, created_at')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
-      if (resp.error) {
-        // Fallback compatível: sem file_name
-        resp = await supabase
-          .from('rf_signatures')
-          .select('id, file_path, created_at')
-          .eq('owner_id', user.id)
-          .order('created_at', { ascending: false });
-      }
       if (!resp.error && Array.isArray(resp.data)) rfRows = resp.data as any[];
     } catch {}
 
@@ -149,52 +141,83 @@ export class SignatureService {
 
     // Mesclar por file_path para evitar duplicatas
     const byPath = new Map<string, any>();
-    (rfRows || []).forEach((r: any) => byPath.set(r.file_path, { ...r }));
+    (rfRows || []).forEach((r: any) => byPath.set(r.file_path, { ...r, __source: 'rf' }));
     (legacyRows || []).forEach((r: any) => {
-      if (!byPath.has(r.file_path)) byPath.set(r.file_path, { ...r });
+      if (!byPath.has(r.file_path)) byPath.set(r.file_path, { ...r, __source: 'legacy' });
     });
 
     const merged = Array.from(byPath.values());
 
-    // Gerar URLs assinadas e mapear para SignatureGalleryItem
-    const signatureItems: SignatureGalleryItem[] = await Promise.all(
-      merged.map(async (signature: any) => {
+    // Para cada item, garantir que o id referencie rf_signatures (criando registro mínimo se necessário)
+    const resolved = await Promise.all(
+      merged.map(async (sig: any) => {
+        // Sempre resolver pelo rf_signatures com owner_id + file_path
+        let rfId: string | null = null;
+        let createdAt: string | null = sig.created_at || null;
+
+        try {
+          const { data: rf } = await supabase
+            .from('rf_signatures')
+            .select('id, created_at')
+            .eq('owner_id', user.id)
+            .eq('file_path', sig.file_path)
+            .maybeSingle();
+          if (rf?.id) {
+            rfId = rf.id;
+            createdAt = rf.created_at || createdAt;
+          }
+        } catch {}
+
+        if (!rfId) {
+          // Criar registro mínimo
+          const { data: inserted } = await supabase
+            .from('rf_signatures')
+            .insert({ owner_id: user.id, file_path: sig.file_path })
+            .select('id, created_at')
+            .single();
+          if (inserted?.id) {
+            rfId = inserted.id;
+            createdAt = inserted.created_at || createdAt;
+          }
+        }
+
+        // URL assinada/pública para preview
         let publicUrl = '';
         try {
           const { data: signed } = await supabase.storage
             .from(this.BUCKET_NAME)
-            .createSignedUrl(signature.file_path, 60 * 60);
+            .createSignedUrl(sig.file_path, 60 * 60);
           publicUrl = signed?.signedUrl || '';
           if (!publicUrl) {
             const { data: urlData } = supabase.storage
               .from(this.BUCKET_NAME)
-              .getPublicUrl(signature.file_path);
+              .getPublicUrl(sig.file_path);
             publicUrl = urlData.publicUrl;
           }
         } catch {
           const { data: urlData } = supabase.storage
             .from(this.BUCKET_NAME)
-            .getPublicUrl(signature.file_path);
+            .getPublicUrl(sig.file_path);
           publicUrl = urlData.publicUrl;
         }
 
-        const fileNameWithExt = signature.file_path.split('/').pop() || 'assinatura.png';
-        const displayName = signature.file_name || fileNameWithExt;
+        const fileNameWithExt = sig.file_path.split('/').pop() || 'assinatura.png';
+        const displayName = sig.file_name || fileNameWithExt;
 
         return {
-          id: signature.id,
+          id: rfId!,
           name: displayName,
           display_name: displayName,
           thumbnail_url: publicUrl,
           is_default: false,
-          created_at: signature.created_at,
+          created_at: createdAt || new Date().toISOString(),
           file_size: undefined,
           file_type: undefined
-        };
+        } as SignatureGalleryItem;
       })
     );
 
-    return signatureItems;
+    return resolved;
   }
 
   /**
