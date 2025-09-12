@@ -69,18 +69,19 @@ export const SignatureMethodModal: React.FC<SignatureMethodModalProps> = ({
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} avoidTabs>
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b">
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-        <button
-          onClick={handleCancel}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+      <div className="flex flex-col min-h-0">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          <button
+            onClick={handleCancel}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-      <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
         {description && (
           <p className="text-sm text-gray-600">
             {description}
