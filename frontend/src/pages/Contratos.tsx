@@ -218,6 +218,9 @@ const Contratos: React.FC = () => {
   // Emitir em nome de outra pessoa
   const [novoEmitirOutro, setNovoEmitirOutro] = useState<boolean>(false);
   const [editEmitirOutro, setEditEmitirOutro] = useState<boolean>(false);
+  // Controle de término indeterminado
+  const [novoFimIndeterminado, setNovoFimIndeterminado] = useState<boolean>(false);
+  const [editFimIndeterminado, setEditFimIndeterminado] = useState<boolean>(false);
   // Exclusão segura com confirmação de senha
   const [showDeleteContrato, setShowDeleteContrato] = useState(false);
   const [deleteTargetContrato, setDeleteTargetContrato] = useState<Contrato | null>(null);
@@ -278,8 +281,8 @@ const Contratos: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
         const path = (user?.user_metadata as any)?.default_signature_path as string | undefined;
         if (!path) { setDefaultSignatureUrl(null); setDefaultSignaturePath(null); return; }
-        const { data: pub } = await supabase.storage.from('signatures').getPublicUrl(path);
-        setDefaultSignatureUrl(pub.publicUrl || null);
+        const { data: signed } = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
+        setDefaultSignatureUrl(signed?.signedUrl || null);
         setDefaultSignaturePath(path);
       } catch {
         setDefaultSignatureUrl(null);
@@ -297,28 +300,23 @@ const Contratos: React.FC = () => {
         if (!user) return;
         const path = (user?.user_metadata as any)?.default_logo_path as string | undefined;
         if (path) {
-          const { data: pub } = await supabase.storage.from('signatures').getPublicUrl(path);
-          setDefaultLogoUrl(pub.publicUrl || null);
+          const { data: signed } = await supabase.storage.from('signatures').createSignedUrl(path, 60 * 60);
+          setDefaultLogoUrl(signed?.signedUrl || null);
         } else {
           setDefaultLogoUrl(null);
         }
 
         const opts: Array<{ path: string; url: string; name: string }> = [];
-        const rootPath = `${user.id}`;
         const brandPath = `${user.id}/branding`;
-        const { data: rootList } = await supabase.storage.from('signatures').list(rootPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
         const { data: brandList } = await supabase.storage.from('signatures').list(brandPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
-        const add = async (base: string, files: any[] | null | undefined) => {
-          if (!files) return;
-          for (const f of files) {
+        if (brandList) {
+          for (const f of brandList) {
             if (!f.name) continue;
-            const full = `${base}/${f.name}`;
-            const { data: pub2 } = await supabase.storage.from('signatures').getPublicUrl(full);
-            if (pub2?.publicUrl) opts.push({ path: full, url: pub2.publicUrl, name: f.name });
+            const full = `${brandPath}/${f.name}`;
+            const { data: s } = await supabase.storage.from('signatures').createSignedUrl(full, 60 * 60);
+            if (s?.signedUrl) opts.push({ path: full, url: s.signedUrl, name: f.name });
           }
-        };
-        await add(rootPath, rootList);
-        await add(brandPath, brandList);
+        }
         setLogoOptions(opts);
       } catch (e) {
         console.warn('Falha ao carregar logos do usuário (contratos):', e);
@@ -849,6 +847,32 @@ const Contratos: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                 <input value={novoContrato.numero || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, numero: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="CONT-001" />
               </div>
+              {/* Emitir em nome de outra pessoa (movido para cima) */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={novoEmitirOutro || !!novoContrato.issuerName}
+                    onChange={(e) => setNovoEmitirOutro(e.target.checked)}
+                  />
+                  Emitir em nome de outra pessoa
+                </label>
+                {(novoEmitirOutro || !!novoContrato.issuerName) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
+                      <input
+                        type="text"
+                        value={novoContrato.issuerName || ''}
+                        onChange={(e) => setNovoContrato(prev => ({ ...prev, issuerName: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input value={novoContrato.cliente || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, cliente: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nome do cliente" />
@@ -882,11 +906,15 @@ const Contratos: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Início</label>
-                  <input type="date" value={novoContrato.dataInicio || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, dataInicio: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="date" required value={novoContrato.dataInicio || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, dataInicio: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Término</label>
-                  <input type="date" value={novoContrato.dataFim || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, dataFim: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="date" value={novoContrato.dataFim || ''} onChange={(e) => setNovoContrato(prev => ({ ...prev, dataFim: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required={!novoFimIndeterminado} disabled={novoFimIndeterminado} />
+                  <div className="flex items-center gap-2 mt-1">
+                    <input id="novo-fim-indeterminado" type="checkbox" className="h-4 w-4" checked={novoFimIndeterminado} onChange={(e) => { setNovoFimIndeterminado(e.target.checked); if (e.target.checked) setNovoContrato(prev => ({ ...prev, dataFim: '' })); }} />
+                    <label htmlFor="novo-fim-indeterminado" className="text-sm text-gray-700">Término indeterminado</label>
+                  </div>
                 </div>
               </div>
               {/* Recorrência */}
@@ -939,11 +967,12 @@ const Contratos: React.FC = () => {
                     <>
                       <select
                         value={novoContrato.signatureId || ''}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const id = e.target.value;
                           if (id === '__create_sig__') { navigate('/assinaturas'); return; }
-                          const opt = signatureOptions.find(o => o.id === id);
-                          setNovoContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: opt?.url }));
+                          let url: string | undefined = undefined;
+                          try { if (id) { const preview = await SignatureService.getSignatureById(id); url = preview.url; } } catch {}
+                          setNovoContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!novoUseSignature}
@@ -1013,32 +1042,7 @@ const Contratos: React.FC = () => {
                   )}
                 </div>
               </div>
-              {/* Emitir em nome de outra pessoa */}
-              <div className="border rounded-lg p-3 space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700 py-1">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={novoEmitirOutro || !!novoContrato.issuerName}
-                    onChange={(e) => setNovoEmitirOutro(e.target.checked)}
-                  />
-                  Emitir em nome de outra pessoa
-                </label>
-                {(novoEmitirOutro || !!novoContrato.issuerName) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
-                      <input
-                        type="text"
-                        value={novoContrato.issuerName || ''}
-                        onChange={(e) => setNovoContrato(prev => ({ ...prev, issuerName: e.target.value }))}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nome completo"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+              
               {/* Objetivo do contrato */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo do contrato</label>
@@ -1196,11 +1200,15 @@ const Contratos: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Início</label>
-                  <input type="date" value={editContrato.dataInicio || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, dataInicio: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="date" required value={editContrato.dataInicio || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, dataInicio: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Término</label>
-                  <input type="date" value={editContrato.dataFim || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, dataFim: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="date" value={editContrato.dataFim || ''} onChange={(e) => setEditContrato(prev => ({ ...prev, dataFim: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required={!editFimIndeterminado} disabled={editFimIndeterminado} />
+                  <div className="flex items-center gap-2 mt-1">
+                    <input id="edit-fim-indeterminado" type="checkbox" className="h-4 w-4" checked={editFimIndeterminado} onChange={(e) => { setEditFimIndeterminado(e.target.checked); if (e.target.checked) setEditContrato(prev => ({ ...prev, dataFim: '' })); }} />
+                    <label htmlFor="edit-fim-indeterminado" className="text-sm text-gray-700">Término indeterminado</label>
+                  </div>
                 </div>
               </div>
               {/* Recorrência (edição) */}
@@ -1249,10 +1257,11 @@ const Contratos: React.FC = () => {
                   <label htmlFor="contrato-edit-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
                   <select
                     value={editContrato.signatureId || ''}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const id = e.target.value;
-                      const opt = signatureOptions.find(o => o.id === id);
-                      setEditContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: opt?.url }));
+                      let url: string | undefined = undefined;
+                      try { if (id) { const preview = await SignatureService.getSignatureById(id); url = preview.url; } } catch {}
+                      setEditContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: url }));
                     }}
                     className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                     disabled={!editUseSignature || signatureOptions.length === 0}

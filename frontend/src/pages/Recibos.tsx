@@ -526,10 +526,11 @@ const Recibos: React.FC = () => {
   }, [showNovoRecibo, defaultSignatureUrl]);
 
   useEffect(() => {
+    // Define valor inicial apenas na abertura do modal, não sobrescreve escolha do usuário depois
     if (showEditRecibo) {
       setEditUseSignature(!!defaultSignatureUrl || !!editRecibo.signatureDataUrl);
     }
-  }, [showEditRecibo, defaultSignatureUrl, editRecibo.signatureDataUrl]);
+  }, [showEditRecibo]);
   // Carrega a lista de assinaturas (via serviço central, por nome) e logos do usuário ao abrir modais
   useEffect(() => {
     const loadAssets = async () => {
@@ -541,23 +542,18 @@ const Recibos: React.FC = () => {
         const sigOptions = gallery.map(item => ({ id: item.id, url: item.thumbnail_url, name: item.display_name || item.name }));
         setSignatureOptions(sigOptions);
 
-        // List logos (diretório raiz e subpasta branding)
+        // Logos: apenas da subpasta 'branding' (evita misturar com assinaturas)
         const logoOpts: Array<{ path: string; url: string; name: string }> = [];
-        const rootPath = `${user.id}`;
         const brandPath = `${user.id}/branding`;
-        const { data: brandRootList } = await supabase.storage.from('signatures').list(rootPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
-        const { data: brandSubList } = await supabase.storage.from('signatures').list(brandPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
-        const addLogo = async (basePath: string, files: any[] | null | undefined) => {
-          if (!files) return;
-          for (const f of files) {
+        const { data: brandList } = await supabase.storage.from('signatures').list(brandPath, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } as any });
+        if (brandList) {
+          for (const f of brandList) {
             if (!f.name) continue;
-            const full = `${basePath}/${f.name}`;
+            const full = `${brandPath}/${f.name}`;
             const { data: s } = await supabase.storage.from('signatures').createSignedUrl(full, 60 * 60);
             if (s?.signedUrl) logoOpts.push({ path: full, url: s.signedUrl, name: f.name });
           }
-        };
-        await addLogo(rootPath, brandRootList);
-        await addLogo(brandPath, brandSubList);
+        }
         setLogoOptions(logoOpts);
       } catch (e) {
         console.warn('Falha ao carregar assinaturas/logos do usuário:', e);
@@ -1083,11 +1079,14 @@ setEditValorInput('');
                     <>
                       <select
                         value={novoRecibo.signatureId || ''}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const id = e.target.value;
                           if (id === '__create_sig__') { navigate('/assinaturas'); return; }
-                          const opt = signatureOptions.find(o => o.id === id);
-                          setNovoRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
+                          let url: string | undefined = undefined;
+                          try {
+                            if (id) { const preview = await SignatureService.getSignatureById(id); url = preview.url; }
+                          } catch {}
+                          setNovoRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!novoUseSignature || novoEmitirOutro}
@@ -1306,7 +1305,7 @@ setEditValorInput('');
                   <input
                     id="edit-use-signature"
                     type="checkbox"
-                    checked={editUseSignature && !editEmitirOutro}
+                    checked={editUseSignature}
                     onChange={(e) => {
                       setEditUseSignature(e.target.checked);
                       if (!e.target.checked) setEditRecibo(prev => ({ ...prev, signatureDataUrl: undefined }));
@@ -1319,11 +1318,14 @@ setEditValorInput('');
                     <>
                       <select
                         value={editRecibo.signatureId || ''}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const id = e.target.value;
                           if (id === '__create_sig__') { navigate('/assinaturas'); return; }
-                          const opt = signatureOptions.find(o => o.id === id);
-                          setEditRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: opt?.url }));
+                          let url: string | undefined = undefined;
+                          try {
+                            if (id) { const preview = await SignatureService.getSignatureById(id); url = preview.url; }
+                          } catch {}
+                          setEditRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
                         disabled={!editUseSignature || editEmitirOutro}
