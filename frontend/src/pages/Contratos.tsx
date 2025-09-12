@@ -1,3 +1,8 @@
+  // Pré-visualização (modais)
+  const [showSignaturePreview, setShowSignaturePreview] = useState(false);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
+  const [showLogoPreview, setShowLogoPreview] = useState(false);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 // Autor: David Assef
 // Descrição: Página de gerenciamento de contratos
 // Data: 11-09-2025

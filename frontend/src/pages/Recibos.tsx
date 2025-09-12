@@ -99,6 +99,11 @@ const Recibos: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [loadedLocal, setLoadedLocal] = useState(false);
+  // Pré-visualização (modais)
+  const [showSignaturePreview, setShowSignaturePreview] = useState(false);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
+  const [showLogoPreview, setShowLogoPreview] = useState(false);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 
   // Persistência local simples
   useEffect(() => {
@@ -740,9 +745,8 @@ setEditRecibo({ ...recibo });
 setEditValorInput(formatNumberToCurrencyBR(recibo.valor));
 const willEmitirOutro = !!(recibo.issuerName || recibo.issuerDocumento);
 setEditEmitirOutro(willEmitirOutro);
-// Se estiver emitindo em nome de outra pessoa, não usar assinatura do usuário
-// Caso contrário, ativar se já houver assinatura no recibo
-setEditUseSignature(!willEmitirOutro && !!(recibo.signatureId || recibo.signatureDataUrl));
+// Permitir uso de assinatura mesmo emitindo em nome de outra pessoa
+setEditUseSignature(!!(recibo.signatureId || recibo.signatureDataUrl));
 setShowEditRecibo(true);
 };
 
@@ -1207,10 +1211,7 @@ setEditValorInput('');
                 <input id="editEmitirOutro" type="checkbox" className="h-4 w-4" checked={editEmitirOutro} onChange={(e) => {
                   const checked = e.target.checked;
                   setEditEmitirOutro(checked);
-                  if (checked) {
-                    // Ao emitir em nome de outra pessoa, não usar assinatura do usuário
-                    setEditUseSignature(false);
-                  } else {
+                  if (!checked) {
                     setEditRecibo(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
                   }
                 }} />
@@ -1337,7 +1338,7 @@ setEditValorInput('');
                         <option value="__create_logo__">Cadastrar Nova Logo</option>
                       </select>
                       {(editRecibo.logoDataUrl || defaultLogoUrl) && (
-                        <img src={(editRecibo.logoDataUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                        <button type="button" onClick={() => { setLogoPreviewUrl((editRecibo.logoDataUrl || defaultLogoUrl) as string); setShowLogoPreview(true); }} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Pré-visualizar logo</button>
                       )}
                     </>
                   ) : (
@@ -1353,7 +1354,7 @@ setEditValorInput('');
                 </div>
               </div>
 
-              {/* Assinatura na edição (selecionar da conta) - desabilitada ao emitir em nome de outra pessoa */}
+              {/* Assinatura na edição (selecionar da conta) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assinatura</label>
                   <div className="mt-1 flex items-center gap-3">
@@ -1366,7 +1367,7 @@ setEditValorInput('');
                       if (!e.target.checked) setEditRecibo(prev => ({ ...prev, signatureDataUrl: undefined }));
                     }}
                     className="h-4 w-4"
-                    disabled={editEmitirOutro}
+                    
                   />
                   <label htmlFor="edit-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
                   {signatureOptions.length > 0 ? (
@@ -1383,7 +1384,7 @@ setEditValorInput('');
                           setEditRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                        disabled={!editUseSignature || editEmitirOutro}
+                        disabled={!editUseSignature}
                       >
                         <option value="">Selecione</option>
                         {signatureOptions.map(opt => (
@@ -1391,8 +1392,8 @@ setEditValorInput('');
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {(!editEmitirOutro && editUseSignature) && (editRecibo.signatureDataUrl || defaultSignatureUrl) && (
-                        <img src={(editRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
+                      {(editUseSignature && (editRecibo.signatureDataUrl || defaultSignatureUrl)) && (
+                        <button type="button" onClick={() => { setSignaturePreviewUrl((editRecibo.signatureDataUrl || defaultSignatureUrl) as string); setShowSignaturePreview(true); }} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Pré-visualizar assinatura</button>
                       )}
                     </>
                   ) : (
@@ -1400,7 +1401,7 @@ setEditValorInput('');
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
                       className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                      disabled={!editUseSignature || editEmitirOutro}
+                      disabled={!editUseSignature}
                     >
                       <option value="">Selecione</option>
                       <option value="__create_sig__">Cadastrar Nova Assinatura</option>
@@ -1419,6 +1420,42 @@ setEditValorInput('');
               </div>
             </form>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modais de Pré-visualização */}
+      {showSignaturePreview && (
+        <Modal open={showSignaturePreview} onOpenChange={setShowSignaturePreview}>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Pré-visualização da assinatura</h3>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowSignaturePreview(false)} aria-label="Fechar">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {signaturePreviewUrl && (
+              <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
+                <img src={signaturePreviewUrl} alt="Assinatura" className="max-w-full h-auto" />
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+      {showLogoPreview && (
+        <Modal open={showLogoPreview} onOpenChange={setShowLogoPreview}>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Pré-visualização da logo</h3>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowLogoPreview(false)} aria-label="Fechar">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {logoPreviewUrl && (
+              <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
+                <img src={logoPreviewUrl} alt="Logo" className="max-w-full h-auto" />
+              </div>
+            )}
           </div>
         </Modal>
       )}
