@@ -397,12 +397,12 @@ const Contratos: React.FC = () => {
     const valor = parseCurrencyBRToNumber(novoValorInput);
     const fimISO = (novoContrato.dataFim && novoContrato.dataFim) || '';
     const inicioISO = (novoContrato.dataInicio && novoContrato.dataInicio) || '';
-    // valida documento obrigatório
-    const doc = novoContrato.documento?.trim() || '';
+    // valida documento obrigatório (apenas comprimento: 11=CPF, 14=CNPJ)
+    const doc = (novoContrato.documento || '').trim();
     const digits = onlyDigits(doc);
-    const ok = digits.length === 11 ? validateCPF(digits) : digits.length === 14 ? validateCNPJ(digits) : false;
+    const ok = (digits.length === 11) || (digits.length === 14);
     if (!ok) {
-      alert('Informe um CPF ou CNPJ válido para o cliente (obrigatório).');
+      alert('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) para o cliente (obrigatório).');
       return;
     }
     // Resolver ID/URL da assinatura se checkbox ativo e não houver seleção explícita
@@ -622,6 +622,14 @@ const Contratos: React.FC = () => {
   const handleEditContratoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contratoSelecionado) return;
+    // valida documento obrigatório (apenas comprimento: 11=CPF, 14=CNPJ)
+    const rawDocEdit = (editContrato.documento || contratoSelecionado.documento || '').trim();
+    const digitsEdit = onlyDigits(rawDocEdit);
+    const okEditDoc = (digitsEdit.length === 11) || (digitsEdit.length === 14);
+    if (!okEditDoc) {
+      alert('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) para o cliente (obrigatório).');
+      return;
+    }
     const novoValor = parseCurrencyBRToNumber(editValorInput);
     // Resolver assinatura padrão se checkbox ativo e sem seleção explícita
     let resolvedSignatureId: string | undefined = editContrato.signatureId ?? contratoSelecionado.signatureId;
@@ -923,6 +931,7 @@ const Contratos: React.FC = () => {
                   }}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p className="text-xs text-gray-500 mt-1">Informe 11 dígitos para CPF ou 14 para CNPJ. Formatação é aplicada automaticamente.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
@@ -1276,6 +1285,7 @@ const Contratos: React.FC = () => {
                   }}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p className="text-xs text-gray-500 mt-1">Informe 11 dígitos para CPF ou 14 para CNPJ. Formatação é aplicada automaticamente.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
