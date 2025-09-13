@@ -79,8 +79,8 @@ export function useDashboard() {
           .eq('owner_id', user.id),
         supabase
           .from('rf_payments')
-          .select('id, valor, pago_em, income_id, owner_id')
-          .eq('owner_id', user.id)
+          .select('id, valor, pago_em, created_at, income_id, rf_incomes!inner(owner_id)')
+          .eq('rf_incomes.owner_id', user.id)
       ]);
 
       if (incomesRes.error) console.warn('Falha rf_incomes:', incomesRes.error.message);
@@ -157,8 +157,8 @@ export function useDashboard() {
       // Buscar últimos pagamentos (rf_payments) juntando valor e pago_em
       const { data: payments, error: payErr } = await supabase
         .from('rf_payments')
-        .select('id, valor, pago_em, created_at, income_id, owner_id')
-        .eq('owner_id', user.id)
+        .select('id, valor, pago_em, created_at, income_id, rf_incomes!inner(owner_id)')
+        .eq('rf_incomes.owner_id', user.id)
         .order('pago_em', { ascending: false })
         .limit(5);
 

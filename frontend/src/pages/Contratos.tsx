@@ -25,6 +25,7 @@ import { supabase } from '../lib/supabase';
 import { SignatureService } from '../services/signatureService';
 import { ContractsService } from '../services/contractsService';
 import Modal from '../components/ui/Modal';
+import { getContractTemplate } from '../templates/contracts';
 
 type ClausulaItem = { id: string; label: string; conteudo: string };
 type Clausula = { id: string; titulo: string; conteudo: string; itens?: ClausulaItem[] };
@@ -512,6 +513,12 @@ const Contratos: React.FC = () => {
 
   const generatePrintableContratoHtml = (contrato: Contrato) => {
     const logoUrl = contrato.useLogo ? (contrato.logoUrl || defaultLogoUrl) : null;
+    const tpl = getContractTemplate(contrato.tipo);
+    const titulo = tpl.title(contrato.numero);
+    const objetoText = (contrato.objeto || contrato.descricao || tpl.fallbackObjectText({ tipo: contrato.tipo }));
+    const clauses = Array.isArray(contrato.clausulas) && contrato.clausulas.length
+      ? contrato.clausulas
+      : tpl.defaultClauses({ tipo: contrato.tipo });
     const style = `
       <style>
         :root { --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --bg:#ffffff; }
@@ -538,18 +545,18 @@ const Contratos: React.FC = () => {
     const fim = contrato.dataFim ? new Date(contrato.dataFim).toLocaleDateString('pt-BR') : 'Não informado';
     return `
       <html>
-        <head><meta charset="utf-8">${style}<title>Contrato ${contrato.numero}</title></head>
+        <head><meta charset="utf-8">${style}<title>${titulo}</title></head>
         <body>
           <div class="head">
             <div class="brand">
               ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo"/>` : ''}
-              <h1>Contrato de Prestação de Serviços nº ${contrato.numero}</h1>
+              <h1>${titulo}</h1>
             </div>
             <div class="label">${new Date().toLocaleDateString('pt-BR')}</div>
           </div>
           <div class="section">
             <div class="meta">
-              <div class="field"><span class="label">Contratante</span><span>${contrato.cliente}</span></div>
+              <div class="field"><span class="label">${tpl.clientRoleLabel}</span><span>${contrato.cliente}</span></div>
               <div class="field"><span class="label">Documento</span><span>${contrato.documento || 'Não informado'}</span></div>
               <div class="field"><span class="label">Tipo</span><span>${contrato.tipo}</span></div>
               <div class="field"><span class="label">Valor</span><span>R$ ${contrato.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
@@ -561,12 +568,12 @@ const Contratos: React.FC = () => {
           </div>
           <div class="section">
             <div class="label">Objeto do Contrato</div>
-            <div class="clause">${(contrato.objeto || contrato.descricao || 'As partes acordam a prestação de serviços conforme especificações fornecidas pelo contratante.')}</div>
+            <div class="clause">${objetoText}</div>
           </div>
-          ${Array.isArray(contrato.clausulas) && contrato.clausulas.length ? `
+          ${Array.isArray(clauses) && clauses.length ? `
           <div class="section">
             <div class="label">Cláusulas</div>
-            ${contrato.clausulas.map((cl, idx) => `
+            ${clauses.map((cl: any, idx: number) => `
               <div class="clause"><strong>${cl.titulo || `Cláusula ${idx+1}`}:</strong> ${cl.conteudo || ''}
               ${Array.isArray(cl.itens) && cl.itens.length ? `
                 <div style="margin-left:16px; margin-top:6px">
@@ -578,13 +585,13 @@ const Contratos: React.FC = () => {
           </div>`: ''}
           <div class="signatures">
             <div class="sig">
-              ${contrato.signatureUrl ? `<img class="signature-img" src="${contrato.signatureUrl}" alt="Assinatura" />` : ''}
               <div class="line"></div>
-              <div class="label">Contratante</div>
+              <div class="label">${tpl.clientRoleLabel}</div>
             </div>
             <div class="sig">
+              ${contrato.signatureUrl ? `<img class="signature-img" src="${contrato.signatureUrl}" alt="Assinatura" />` : ''}
               <div class="line"></div>
-              <div class="label">Contratado</div>
+              <div class="label">${tpl.userRoleLabel}</div>
             </div>
           </div>
           <script>window.onload = () => { window.print(); };</script>
