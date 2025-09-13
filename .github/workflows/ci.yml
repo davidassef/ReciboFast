@@ -1,6 +1,6 @@
 # Autor: David Assef
 # Descrição: Pipeline CI para build, testes unitários (Vitest) e E2E (Playwright) do frontend
-# Data: 07-09-2025
+# Data: 12-09-2025
 # MIT License
 
 name: CI Frontend
@@ -52,10 +52,19 @@ jobs:
           VITE_E2E_BYPASS: '1'
         run: npm run e2e
 
-      - name: Trigger Vercel Deploy (Production)
-        if: ${{ secrets.VERCEL_DEPLOY_HOOK_URL != '' }}
+      - name: Prepare Vercel hook env
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "${VERCEL_DEPLOY_HOOK_URL}" ]; then
+            echo "HAS_VERCEL_HOOK=true" >> "$GITHUB_ENV"
+            echo "VERCEL_DEPLOY_HOOK_URL=${VERCEL_DEPLOY_HOOK_URL}" >> "$GITHUB_ENV"
+          else
+            echo "HAS_VERCEL_HOOK=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Trigger Vercel Deploy (Production)
+        if: ${{ env.HAS_VERCEL_HOOK == 'true' }}
         run: |
           echo "Triggering Vercel Deploy via Hook"
           curl -s -X POST "$VERCEL_DEPLOY_HOOK_URL" || true

@@ -1081,8 +1081,14 @@ setEditValorInput('');
                         ))}
                         <option value="__create_logo__">Cadastrar Nova Logo</option>
                       </select>
-                      {(novoRecibo.logoDataUrl || defaultLogoUrl) && (
-                        <img src={(novoRecibo.logoDataUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                      {!!novoRecibo.logoDataUrl && (
+                        <button
+                          type="button"
+                          onClick={() => { setLogoPreviewUrl(novoRecibo.logoDataUrl as string); setShowLogoPreview(true); }}
+                          className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                        >
+                          Pré-visualizar logo
+                        </button>
                       )}
                     </>
                   ) : (
@@ -1101,13 +1107,13 @@ setEditValorInput('');
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                 <textarea value={novoRecibo.descricao || ''} onChange={(e) => setNovoRecibo(prev => ({ ...prev, descricao: e.target.value }))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} />
               </div>
-              {/* Assinatura (selecionar da conta) - desabilitada ao emitir em nome de outra pessoa */}
+              {/* Assinatura (selecionar da conta) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">Assinatura</label>
                 </div>
                 <div className="mt-1 flex items-center gap-3">
-                  <input id="novo-use-signature" type="checkbox" checked={novoUseSignature && !novoEmitirOutro} onChange={(e) => { setNovoUseSignature(e.target.checked); if (!e.target.checked) setNovoRecibo(prev => ({ ...prev, signatureDataUrl: undefined })); }} className="h-4 w-4" disabled={novoEmitirOutro} />
+                  <input id="novo-use-signature" type="checkbox" checked={novoUseSignature} onChange={(e) => { setNovoUseSignature(e.target.checked); if (!e.target.checked) setNovoRecibo(prev => ({ ...prev, signatureDataUrl: undefined, signatureId: undefined })); }} className="h-4 w-4" />
                   <label htmlFor="novo-use-signature" className="text-sm text-gray-700">Usar sua assinatura</label>
                   {signatureOptions.length > 0 ? (
                     <>
@@ -1123,7 +1129,7 @@ setEditValorInput('');
                           setNovoRecibo(prev => ({ ...prev, signatureId: id || undefined, signatureDataUrl: url }));
                         }}
                         className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                        disabled={!novoUseSignature || novoEmitirOutro}
+                        disabled={!novoUseSignature}
                       >
                         <option value="">Selecione</option>
                         {signatureOptions.map(opt => (
@@ -1131,8 +1137,14 @@ setEditValorInput('');
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {(novoRecibo.signatureDataUrl || defaultSignatureUrl) && (
-                        <img src={(novoRecibo.signatureDataUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
+                      {(novoUseSignature && !!novoRecibo.signatureId && !!novoRecibo.signatureDataUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => { setSignaturePreviewUrl(novoRecibo.signatureDataUrl as string); setShowSignaturePreview(true); }}
+                          className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                        >
+                          Pré-visualizar assinatura
+                        </button>
                       )}
                     </>
                   ) : (
@@ -1140,7 +1152,7 @@ setEditValorInput('');
                       value={''}
                       onChange={(e) => { if (e.target.value === '__create_sig__') navigate('/assinaturas'); }}
                       className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                      disabled={!novoUseSignature || novoEmitirOutro}
+                      disabled={!novoUseSignature}
                     >
                       <option value="">Selecione</option>
                       <option value="__create_sig__">Cadastrar Nova Assinatura</option>

@@ -1007,8 +1007,14 @@ const Contratos: React.FC = () => {
                         ))}
                         <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                       </select>
-                      {novoUseSignature && (novoContrato.signatureUrl || defaultSignatureUrl) && (
-                        <img src={(novoContrato.signatureUrl || defaultSignatureUrl) as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
+                      {novoUseSignature && !!novoContrato.signatureId && !!novoContrato.signatureUrl && (
+                        <button
+                          type="button"
+                          onClick={() => { setSignaturePreviewUrl(novoContrato.signatureUrl as string); setShowSignaturePreview(true); }}
+                          className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                        >
+                          Pré-visualizar assinatura
+                        </button>
                       )}
                     </>
                   ) : (
@@ -1050,8 +1056,14 @@ const Contratos: React.FC = () => {
                         ))}
                         <option value="__create_logo__">Cadastrar Nova Logo</option>
                       </select>
-                      {(novoContrato.logoUrl || defaultLogoUrl) && (
-                        <img src={(novoContrato.logoUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
+                      {!!novoContrato.logoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => { setLogoPreviewUrl(novoContrato.logoUrl as string); setShowLogoPreview(true); }}
+                          className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                        >
+                          Pré-visualizar logo
+                        </button>
                       )}
                     </>
                   ) : (
@@ -1321,7 +1333,9 @@ const Contratos: React.FC = () => {
                     checked={editUseSignature}
                     onChange={(e) => {
                       setEditUseSignature(e.target.checked);
-                      if (!e.target.checked) setEditContrato(prev => ({ ...prev, signatureUrl: undefined }));
+                      if (!e.target.checked) {
+                        setEditContrato(prev => ({ ...prev, signatureUrl: undefined }));
+                      }
                     }}
                     className="h-4 w-4"
                   />
@@ -1330,25 +1344,29 @@ const Contratos: React.FC = () => {
                     value={editContrato.signatureId || ''}
                     onChange={async (e) => {
                       const id = e.target.value;
+                      if (id === '__create_sig__') { navigate('/assinaturas'); return; }
                       let url: string | undefined = undefined;
                       try { if (id) { const preview = await SignatureService.getSignatureById(id); url = preview.url; } } catch {}
                       setEditContrato(prev => ({ ...prev, signatureId: id || undefined, signatureUrl: url }));
                     }}
                     className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                    disabled={!editUseSignature || signatureOptions.length === 0}
+                    disabled={!editUseSignature}
                   >
-                    <option value="">Padrão da conta (assinatura)</option>
+                    <option value="">Selecione</option>
                     {signatureOptions.map(opt => (
                       <option key={opt.id} value={opt.id}>{opt.name}</option>
                     ))}
+                    <option value="__create_sig__">Cadastrar Nova Assinatura</option>
                   </select>
-                  {editUseSignature && (editContrato.signatureUrl ? (
-                    <img src={editContrato.signatureUrl as string} alt="Assinatura" className="h-10 object-contain border rounded bg-white px-2" />
-                  ) : defaultSignatureUrl ? (
-                    <img src={defaultSignatureUrl} alt="Assinatura padrão" className="h-10 object-contain border rounded bg-white px-2" />
-                  ) : (
-                    <span className="text-xs text-gray-500">Nenhuma assinatura cadastrada. Cadastre em Perfil.</span>
-                  ))}
+                  {editUseSignature && !!editContrato.signatureId && !!editContrato.signatureUrl && (
+                    <button
+                      type="button"
+                      onClick={() => { setSignaturePreviewUrl(editContrato.signatureUrl as string); setShowSignaturePreview(true); }}
+                      className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
+                    >
+                      Pré-visualizar assinatura
+                    </button>
+                  )}
                 </div>
               </div>
               {/* Logo (edição) */}
@@ -1359,37 +1377,30 @@ const Contratos: React.FC = () => {
                   <label htmlFor="contrato-edit-use-logo" className="text-sm text-gray-700">Exibir logo da sua conta</label>
                 </div>
                 <div className="mt-2 flex items-center gap-3">
-                  {logoOptions.length > 0 ? (
-                    <>
-                      <select
-                        value={editContrato.logoUrl || ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === '__create_logo__') { navigate('/assinaturas'); return; }
-                          setEditContrato(prev => ({ ...prev, logoUrl: v || undefined }));
-                        }}
-                        className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                        disabled={!editContrato.useLogo}
-                      >
-                        <option value="">Selecione</option>
-                        {logoOptions.map(opt => (
-                          <option key={opt.path} value={opt.url}>{opt.name}</option>
-                        ))}
-                        <option value="__create_logo__">Cadastrar Nova Logo</option>
-                      </select>
-                      {(editContrato.logoUrl || defaultLogoUrl) && (
-                        <img src={(editContrato.logoUrl || defaultLogoUrl) as string} alt="Logo" className="h-10 object-contain border rounded bg-white px-2" />
-                      )}
-                    </>
-                  ) : (
-                    <select
-                      value={''}
-                      onChange={(e) => { if (e.target.value === '__create_logo__') navigate('/assinaturas'); }}
-                      className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
-                      disabled={!editContrato.useLogo}
+                  <select
+                    value={editContrato.logoUrl || ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__create_logo__') { navigate('/assinaturas'); return; }
+                      setEditContrato(prev => ({ ...prev, logoUrl: v || undefined }));
+                    }}
+                    className="px-3 py-2 border rounded-lg text-sm w-full max-w-xs"
+                    disabled={!editContrato.useLogo}
+                  >
+                    <option value="">Selecione</option>
+                    {logoOptions.map(opt => (
+                      <option key={opt.path} value={opt.url}>{opt.name}</option>
+                    ))}
+                    <option value="__create_logo__">Cadastrar Nova Logo</option>
+                  </select>
+                  {!!editContrato.logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => { setLogoPreviewUrl(editContrato.logoUrl as string); setShowLogoPreview(true); }}
+                      className="text-sm px-3 py-2 border rounded hover:bg-gray-50"
                     >
-                      <option value="__create_logo__">Cadastrar Nova Logo</option>
-                    </select>
+                      Pré-visualizar logo
+                    </button>
                   )}
                 </div>
               </div>
@@ -1655,7 +1666,43 @@ const Contratos: React.FC = () => {
         </div>
       )}
     </div>
+
+    {/* Modais de Pré-visualização */}
+    {showSignaturePreview && (
+      <Modal open={showSignaturePreview} onOpenChange={setShowSignaturePreview}>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">Pré-visualização da assinatura</h3>
+            <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowSignaturePreview(false)} aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          {signaturePreviewUrl && (
+            <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
+              <img src={signaturePreviewUrl} alt="Assinatura" className="max-w-full h-auto" />
+            </div>
+          )}
+        </div>
+      </Modal>
+    )}
+    {showLogoPreview && (
+      <Modal open={showLogoPreview} onOpenChange={setShowLogoPreview}>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">Pré-visualização da logo</h3>
+            <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowLogoPreview(false)} aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          {logoPreviewUrl && (
+            <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
+              <img src={logoPreviewUrl} alt="Logo" className="max-w-full h-auto" />
+            </div>
+          )}
+        </div>
+      </Modal>
+    )}
   );
-};
+}
 
 export default Contratos;
