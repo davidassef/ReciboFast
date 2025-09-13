@@ -526,7 +526,7 @@ const Contratos: React.FC = () => {
   const generatePrintableContratoHtml = (contrato: Contrato) => {
     const logoUrl = contrato.useLogo ? (contrato.logoUrl || defaultLogoUrl) : null;
     const tpl = getContractTemplate(contrato.tipo);
-    const titulo = tpl.title(contrato.numero);
+    const titulo = tpl.title(contrato.numero).toUpperCase();
     const objetoText = (contrato.objeto || contrato.descricao || tpl.fallbackObjectText({ tipo: contrato.tipo }));
     const baseClauses = Array.isArray(contrato.clausulas) && contrato.clausulas.length
       ? contrato.clausulas
@@ -547,7 +547,8 @@ const Contratos: React.FC = () => {
             texto += `\n\nÍndice aplicado: ${reaj}.`;
           }
         }
-        if (/aluguel.*reajuste/i.test(titulo)) {
+        // Locação novo título: DO VALOR MENSAL DA LOCAÇÃO
+        if (/aluguel.*reajuste/i.test(titulo) || /valor\s+mensal\s+da\s+loca/i.test(titulo)) {
           if (!/índice/i.test(texto)) {
             texto += `\n\nReajuste anual pelo índice: ${reaj}.`;
           }
@@ -561,7 +562,7 @@ const Contratos: React.FC = () => {
           }
         }
         // IPTU/Condomínio (locação)
-        if (titulo === 'IPTU, Condomínio e Outras Despesas') {
+        if (/iptu|condom[ií]nio|tributos/i.test(titulo)) {
           if (!/Responsáveis:\s*IPTU/i.test(texto)) {
             texto += `\n\nResponsáveis: IPTU — ${respIPTU}; Condomínio — ${respCond}.`;
           }
@@ -574,39 +575,45 @@ const Contratos: React.FC = () => {
       : injectTemplateParams(baseClauses);
     const style = `
       <style>
-        :root { --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --bg:#ffffff; }
-        *{box-sizing:border-box} body{font-family:Georgia, 'Times New Roman', serif; margin:32px; background:var(--bg); color:var(--fg)}
-        .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        :root { --fg:#0f172a; --muted:#6b7280; --border:#e5e7eb; --bg:#ffffff; }
+        *{box-sizing:border-box} body{font-family:Georgia, 'Times New Roman', serif; margin:28mm 20mm; background:var(--bg); color:var(--fg)}
+        .head{display:flex;justify-content:space-between;align-items:center}
         .brand{display:flex;align-items:center;gap:12px}
-        .brand .logo{height:42px;object-fit:contain}
-        h1{font-size:22px; margin:0; text-transform:uppercase; letter-spacing:.5px}
-        .section{margin-top:18px}
-        .label{color:var(--muted)}
+        .brand .logo{height:40px;object-fit:contain}
+        h1{font-size:18px; margin:8px 0 4px; text-transform:uppercase; letter-spacing:.6px; text-align:center}
+        .subtitle{font-size:12px; color:var(--muted); text-align:center; margin-bottom:12px}
+        .section{margin-top:16px}
+        .label{color:var(--muted); font-size:12px}
         .field{display:flex; justify-content:space-between; gap:16px; border-bottom:1px dotted var(--border); padding:6px 0}
-        .clause{margin-top:10px; line-height:1.6; text-align:justify}
-        .signatures{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin-top:48px}
-        .sig{width:48%; text-align:center; display:flex; flex-direction:column; justify-content:flex-end; min-height:120px}
-        /* Aproxima a linha da assinatura para parecer feita à mão */
-        .sig .line{margin-top:4px; border-top:1px solid var(--border);}
+        .clause{margin-top:12px; line-height:1.65; text-align:justify; hyphens:auto}
+        .clause-title{font-weight:700; text-transform:uppercase}
+        .subitems{margin-left:18px; margin-top:6px}
+        .signatures{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin-top:42px}
+        .sig{width:48%; text-align:center; display:flex; flex-direction:column; justify-content:flex-end; min-height:110px}
+        .sig .line{margin-top:6px; border-top:1px solid var(--border);}
         .meta{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px}
-        /* Reduz a distância abaixo da assinatura e aproxima da linha */
-        .signature-img{max-height:80px; object-fit:contain; margin-bottom:2px}
-        @media print{ body{margin:16px} }
+        .signature-img{max-height:70px; object-fit:contain; margin-bottom:2px}
+        .witness{margin-top:36px}
+        .witness .line{border-top:1px solid var(--border); margin-top:36px}
+        .witness .row{display:flex; gap:24px; margin-top:12px}
+        .witness .cell{flex:1}
+        @page { size: A4; margin: 20mm; }
+        @media print{ body{margin:0} }
       </style>
     `;
     const inicio = contrato.dataInicio ? new Date(contrato.dataInicio).toLocaleDateString('pt-BR') : 'Não informado';
     const fim = contrato.dataFim ? new Date(contrato.dataFim).toLocaleDateString('pt-BR') : 'Não informado';
+    const ordinais = [
+      'PRIMEIRA','SEGUNDA','TERCEIRA','QUARTA','QUINTA','SEXTA','SÉTIMA','OITAVA','NONA','DÉCIMA',
+      'DÉCIMA PRIMEIRA','DÉCIMA SEGUNDA','DÉCIMA TERCEIRA','DÉCIMA QUARTA','DÉCIMA QUINTA','DÉCIMA SEXTA','DÉCIMA SÉTIMA','DÉCIMA OITAVA','DÉCIMA NONA','VIGÉSIMA'
+    ];
     return `
       <html>
         <head><meta charset="utf-8">${style}<title>${titulo}</title></head>
         <body>
-          <div class="head">
-            <div class="brand">
-              ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo"/>` : ''}
-              <h1>${titulo}</h1>
-            </div>
-            <div class="label">${new Date().toLocaleDateString('pt-BR')}</div>
-          </div>
+          <div class="brand" style="justify-content:center;">${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo"/>` : ''}</div>
+          <h1>${titulo}</h1>
+          <div class="subtitle">${new Date().toLocaleDateString('pt-BR')}</div>
           <div class="section">
             <div class="meta">
               <div class="field"><span class="label">${tpl.clientRoleLabel}</span><span>${contrato.cliente}</span></div>
@@ -627,12 +634,14 @@ const Contratos: React.FC = () => {
           <div class="section">
             <div class="label">Cláusulas</div>
             ${clauses.map((cl: any, idx: number) => `
-              <div class="clause"><strong>${cl.titulo || `Cláusula ${idx+1}`}:</strong> ${cl.conteudo || ''}
-              ${Array.isArray(cl.itens) && cl.itens.length ? `
-                <div style="margin-left:16px; margin-top:6px">
-                  ${cl.itens.map(it => `<div><strong>${it.label}:</strong> ${it.conteudo}</div>`).join('')}
-                </div>
-              `: ''}
+              <div class="clause">
+                <div class="clause-title">${(ordinais[idx] || `CLÁUSULA ${idx+1}`)}: ${cl.titulo || ''}</div>
+                <div>${cl.conteudo || ''}</div>
+                ${Array.isArray(cl.itens) && cl.itens.length ? `
+                  <div class="subitems">
+                    ${cl.itens.map(it => `<div><strong>${it.label}</strong> ${it.conteudo}</div>`).join('')}
+                  </div>
+                `: ''}
               </div>
             `).join('')}
           </div>`: ''}
@@ -645,6 +654,13 @@ const Contratos: React.FC = () => {
               ${contrato.signatureUrl ? `<img class="signature-img" src="${contrato.signatureUrl}" alt="Assinatura" />` : ''}
               <div class="line"></div>
               <div class="label">${tpl.userRoleLabel}</div>
+            </div>
+          </div>
+          <div class="witness">
+            <div class="label">TESTEMUNHAS:</div>
+            <div class="row">
+              <div class="cell"><div class="line"></div></div>
+              <div class="cell"><div class="line"></div></div>
             </div>
           </div>
           <script>window.onload = () => { window.print(); };</script>
@@ -1243,7 +1259,14 @@ const Contratos: React.FC = () => {
                     <button type="button" onClick={() => {
                       const tpl = getContractTemplate(novoContrato.tipo);
                       const base = tpl.defaultClauses({ tipo: novoContrato.tipo });
-                      const mapped = base.map((b, idx) => ({ id: crypto.randomUUID(), titulo: b.titulo || `Cláusula ${idx+1}` , conteudo: b.conteudo || '', itens: [] as ClausulaItem[] }));
+                      const mapped = base.map((b, idx) => ({
+                        id: crypto.randomUUID(),
+                        titulo: b.titulo || `Cláusula ${idx+1}` ,
+                        conteudo: b.conteudo || '',
+                        itens: Array.isArray((b as any).itens)
+                          ? (b as any).itens.map((it: any, jdx: number) => ({ id: crypto.randomUUID(), label: it.label || `${idx+1}.${jdx+1}`, conteudo: it.conteudo || '' }))
+                          : [] as ClausulaItem[]
+                      }));
                       setNovoClausulas(mapped);
                     }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Carregar do template</button>
                     <button type="button" onClick={() => setNovoClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
@@ -1651,7 +1674,14 @@ const Contratos: React.FC = () => {
                     <button type="button" onClick={() => {
                       const tpl = getContractTemplate(editContrato.tipo);
                       const base = tpl.defaultClauses({ tipo: editContrato.tipo });
-                      const mapped = base.map((b, idx) => ({ id: crypto.randomUUID(), titulo: b.titulo || `Cláusula ${idx+1}` , conteudo: b.conteudo || '', itens: [] as ClausulaItem[] }));
+                      const mapped = base.map((b, idx) => ({
+                        id: crypto.randomUUID(),
+                        titulo: b.titulo || `Cláusula ${idx+1}` ,
+                        conteudo: b.conteudo || '',
+                        itens: Array.isArray((b as any).itens)
+                          ? (b as any).itens.map((it: any, jdx: number) => ({ id: crypto.randomUUID(), label: it.label || `${idx+1}.${jdx+1}`, conteudo: it.conteudo || '' }))
+                          : [] as ClausulaItem[]
+                      }));
                       setEditClausulas(mapped);
                     }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Carregar do template</button>
                     <button type="button" onClick={() => setEditClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>

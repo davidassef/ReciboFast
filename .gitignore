@@ -208,6 +208,11 @@ docker-compose.override.yml
 .trae/cache/
 .trae/temp/
 
+# Arquivos de contrato de referência (não versionar)
+CONTRATO ALUGUEL.jpg
+CONTRATO ALUGUEL 2.jpg
+CONTRATO ALUGUEL 3.jpg
+
 # ===== ARQUIVOS DE DESENVOLVIMENTO =====
 # Arquivos de debug
 *.debug

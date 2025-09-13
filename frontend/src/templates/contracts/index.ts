@@ -117,68 +117,28 @@ const locacaoTemplate: ContractTemplate = {
   fallbackObjectText: () =>
     'As partes ajustam a locação do bem descrito, observando as condições, prazos e responsabilidades estabelecidas neste contrato.',
   defaultClauses: () => [
-    { titulo: 'Definições', conteudo: 'Os termos utilizados neste contrato terão o significado aqui estabelecido e/ou na legislação aplicável.' },
-    {
-      titulo: 'Objeto da Locação',
-      conteudo:
-        'Constitui objeto deste contrato a locação do bem descrito (imóvel/ móvel), entregue ao LOCATÁRIO em condições adequadas de uso e conservação, conforme vistoria.'
-    },
-    {
-      titulo: 'Prazo e Renovação',
-      conteudo:
-        'O prazo de locação é o estipulado entre as partes, podendo ser renovado por acordo escrito. Findo o prazo, a devolução ocorrerá nas mesmas condições da entrega, ressalvado o desgaste natural.'
-    },
-    {
-      titulo: 'Aluguel, Encargos e Reajuste',
-      conteudo:
-        'O LOCATÁRIO pagará aluguel no valor e periodicidade ajustados, além de encargos usuais (ex.: consumo, taxas ordinárias). O reajuste dar-se-á anualmente pelo índice acordado (ex.: IPCA/IBGE), a contar da assinatura ou última revisão.'
-    },
-    { titulo: 'IPTU, Condomínio e Outras Despesas', conteudo: 'Salvo ajuste em contrário, o LOCATÁRIO arcará com as despesas ordinárias de condomínio e consumo; impostos como IPTU seguirão a legislação e a alocação pactuada entre as partes.' },
-    {
-      titulo: 'Garantias',
-      conteudo:
-        'Poderá ser exigida garantia (caução, fiador ou seguro-fiança) conforme pactuado, destinada a cobrir débitos locatícios, danos e outras obrigações.'
-    },
-    {
-      titulo: 'Conservação, Uso e Benfeitorias',
-      conteudo:
-        'Compete ao LOCATÁRIO zelar pelo bem, utilizando-o conforme a destinação pactuada. Benfeitorias dependerão de autorização do LOCADOR e sua indenização seguirá o que for ajustado.'
-    },
-    { titulo: 'Seguro', conteudo: 'Quando aplicável, as partes poderão acordar contratação de seguro para cobertura de riscos relacionados ao bem locado.' },
-    {
-      titulo: 'Vistorias e Entrega das Chaves',
-      conteudo:
-        'Serão realizadas vistorias na entrada e saída. A entrega das chaves formaliza a devolução, acompanhada do acerto de contas pendentes.'
-    },
-    { titulo: 'Proibições', conteudo: 'É vedado ao LOCATÁRIO modificar a destinação do bem, bem como realizar obras sem autorização do LOCADOR, manter atividades ilícitas ou que infrinjam regulamentos internos.' },
-    {
-      titulo: 'Inadimplemento e Multas',
-      conteudo:
-        'O atraso no pagamento sujeita o LOCATÁRIO à multa e demais encargos convencionados, sem prejuízo de medidas legais cabíveis.'
-    },
-    {
-      titulo: 'Sublocação e Cessão',
-      conteudo:
-        'Vedada a sublocação ou cessão, total ou parcial, sem autorização expressa do LOCADOR.'
-    },
-    {
-      titulo: 'Direito de Preferência',
-      conteudo:
-        'Em caso de alienação do bem locado, observar-se-á o direito de preferência do LOCATÁRIO, na forma da lei.'
-    },
-    { titulo: 'Força Maior', conteudo: 'Ocorrendo situações de força maior que impeçam o uso regular do bem, as partes negociarão soluções de boa-fé, respeitando a legislação aplicável.' },
-    {
-      titulo: 'Rescisão',
-      conteudo:
-        'O contrato poderá ser rescindido por inadimplemento das obrigações, por mútuo acordo, ou por outras hipóteses legais, mediante aviso prévio quando aplicável.'
-    },
-    { titulo: 'Comunicações', conteudo: 'As comunicações relevantes entre as partes deverão ser realizadas por escrito (e-mail ou sistema), com comprovação de envio quando solicitado.' },
-    { titulo: 'Cessão e Transferência', conteudo: 'A cessão de posição contratual depende de anuência da outra parte, salvo hipóteses legais específicas.' },
-    {
-      titulo: 'Foro',
-      conteudo:
-        'Fica eleito o foro da comarca do LOCADOR para resolver controvérsias oriundas deste instrumento, com renúncia a outro, por mais privilegiado que seja.'
-    }
+    { titulo: 'DO LOCADOR', conteudo: 'Identificação do LOCADOR (usuário do sistema) conforme qualificação constante no cabeçalho deste instrumento.' },
+    { titulo: 'DO LOCATÁRIO', conteudo: 'Identificação do LOCATÁRIO (cliente) conforme qualificação constante no cabeçalho deste instrumento.' },
+    { titulo: 'FIADOR', conteudo: 'Suprimida, salvo ajuste diverso entre as partes.' },
+    { titulo: 'OBJETO DA LOCAÇÃO', conteudo: 'Constitui objeto deste contrato a locação do bem descrito, entregue ao LOCATÁRIO em condições adequadas de uso e conservação, conforme vistoria.' },
+    { titulo: 'DO PRAZO DE LOCAÇÃO', conteudo: 'O prazo de locação é o estipulado entre as partes, podendo ser renovado por acordo escrito. Findo o prazo, a devolução ocorrerá nas mesmas condições da entrega, ressalvado o desgaste natural.' },
+    { titulo: 'DO VALOR MENSAL DA LOCAÇÃO', conteudo: 'O LOCATÁRIO pagará aluguel no valor e periodicidade ajustados. Em caso de reajuste, aplicar-se-á o índice acordado entre as partes, contado da assinatura ou última revisão.' },
+    { titulo: 'DOS TRIBUTOS E DEMAIS ENCARGOS', conteudo: 'Obriga-se o LOCATÁRIO, além do pagamento do aluguel, ao pagamento, por sua conta exclusiva, do consumo de energia elétrica, água e demais taxas e leis incorporadas por força normativa no período de vigência deste contrato, bem como a manter a locação do imóvel pelo locatário.', itens: [
+      { label: 'a)', conteudo: 'Manter o objeto da locação no perfeito estado de conservação e limpeza, correndo por sua conta as despesas necessárias de manutenção e conservação (pinturas, portas, fechaduras, instalações elétricas, trilhos, aparelhos e quaisquer outros).'},
+      { label: 'b)', conteudo: 'Não efetuar qualquer alteração, adaptação ou benfeitoria sem autorização do LOCADOR; benfeitorias não serão indenizadas salvo ajuste legal.'},
+      { label: 'c)', conteudo: 'Não transferir, emprestar ou ceder a terceiros, no todo ou em parte, os direitos e responsabilidades sobre o imóvel locado.'},
+      { label: 'd)', conteudo: 'Encaminhar ao LOCADOR todas as notificações, avisos ou intimações dos poderes públicos entregues no imóvel, sob pena de responder por multas e penalidades decorrentes do não atendimento.'},
+      { label: 'e)', conteudo: 'Facultar ao LOCADOR ou representantes legais examinar ou vistoriar o imóvel sempre que solicitado; e, no caso de venda, permitir a visita de interessados.'},
+    ] },
+    { titulo: 'DA VENDA DO IMÓVEL', conteudo: 'Na hipótese do imóvel ser colocado à venda, o LOCADOR deverá dar preferência ao LOCATÁRIO nas mesmas condições de preços e prazos, conforme legislação aplicável.' },
+    { titulo: 'DO IMPOSTO PREDIAL', conteudo: 'As partes ajustam que o pagamento do imposto predial do imóvel locado correrá a cargo do LOCATÁRIO, durante o período da locação.' },
+    { titulo: 'DA RESCISÃO CONTRATUAL', conteudo: 'O descumprimento de obrigações ensejará rescisão contratual mediante notificação escrita, sem prejuízo das penalidades e perdas e danos cabíveis.' },
+    { titulo: 'DA INDENIZAÇÃO E DIREITO DE RETENÇÃO', conteudo: 'Toda e qualquer benfeitoria útil ou voluptuária realizada sem autorização não será indenizada, nem gerará direito de retenção. Benfeitorias necessárias observarão a lei ou ajuste expresso.' },
+    { titulo: 'DAS VANTAGENS LEGAIS SUPERVINIENTES', conteudo: 'A locação está sujeita ao Código Civil e à Lei 8.245/1991, assegurando-se ao LOCADOR os direitos e vantagens conferidos por legislação superveniente.' },
+    { titulo: 'DAS GARANTIAS', conteudo: 'Em garantia do cumprimento das obrigações, poderá haver caução, fiança ou seguro-fiança, conforme pactuado, destinado a cobrir débitos locatícios e danos.' },
+    { titulo: 'DO PRAZO PARA OS PAGAMENTOS', conteudo: 'Fica convencionado que o LOCATÁRIO fará o pagamento dos aluguéis até o 5º (quinto) dia do vencimento de cada mês. O atraso sujeita o LOCATÁRIO à multa, juros e correção, sem prejuízo de cobrança por meios judiciais.' },
+    { titulo: 'DA CLÁUSULA PENAL', conteudo: 'O LOCADOR e o LOCATÁRIO obrigam-se a respeitar o presente contrato; a parte que infringir dispositivo contratual incorrerá em multa equivalente a 01 (um) aluguel atualizado, sem prejuízo de outras penalidades legais. A multa poderá ser exigida cumulativamente com a rescisão.' },
+    { titulo: 'FORO', conteudo: 'Fica eleito o foro da comarca do LOCADOR para resolver controvérsias oriundas deste instrumento, com renúncia a outro, por mais privilegiado que seja.' },
   ]
 };
 
