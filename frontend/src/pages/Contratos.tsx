@@ -52,6 +52,12 @@ interface Contrato {
   issuerDocumento?: string; // Documento do emissor alternativo
   recurrenceEnabled?: boolean; // recebimento recorrente
   recurrenceDay?: number; // dia do recebimento (1-28)
+  // Parâmetros do template (para imprimir nas cláusulas padrão quando não houver edição do usuário)
+  reajusteIndice?: string; // ex.: IPCA, IGP-M, INCC, Não aplicar
+  garantiaTipo?: string; // Nenhuma, Caução, Fiador, Seguro-fiança
+  garantiaDetalhes?: string;
+  despesasIPTUResponsavel?: 'Locatário' | 'Locador';
+  despesasCondominioResponsavel?: 'Locatário' | 'Locador';
 }
 
 const _mockContratos: Contrato[] = [
@@ -193,7 +199,13 @@ const Contratos: React.FC = () => {
     documento: '',
     signatureUrl: undefined,
     recurrenceEnabled: false,
-    recurrenceDay: undefined
+    recurrenceDay: undefined,
+    // parâmetros do template (padrões sensatos)
+    reajusteIndice: 'IPCA',
+    garantiaTipo: 'Nenhuma',
+    garantiaDetalhes: '',
+    despesasIPTUResponsavel: 'Locatário',
+    despesasCondominioResponsavel: 'Locatário'
   });
   const [showViewContrato, setShowViewContrato] = useState(false);
   const [contratoSelecionado, setContratoSelecionado] = useState<Contrato | null>(null);
@@ -483,7 +495,7 @@ const Contratos: React.FC = () => {
       setContratos(prev => [novo, ...prev]);
     }
     setShowNovoContrato(false);
-    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined, recurrenceEnabled: false, recurrenceDay: undefined });
+    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined, recurrenceEnabled: false, recurrenceDay: undefined, reajusteIndice: 'IPCA', garantiaTipo: 'Nenhuma', garantiaDetalhes: '', despesasIPTUResponsavel: 'Locatário', despesasCondominioResponsavel: 'Locatário' });
     setNovoValorInput('');
     setNovoObjeto('');
     setNovoClausulas([]);
@@ -516,9 +528,50 @@ const Contratos: React.FC = () => {
     const tpl = getContractTemplate(contrato.tipo);
     const titulo = tpl.title(contrato.numero);
     const objetoText = (contrato.objeto || contrato.descricao || tpl.fallbackObjectText({ tipo: contrato.tipo }));
-    const clauses = Array.isArray(contrato.clausulas) && contrato.clausulas.length
+    const baseClauses = Array.isArray(contrato.clausulas) && contrato.clausulas.length
       ? contrato.clausulas
       : tpl.defaultClauses({ tipo: contrato.tipo });
+    // Quando o usuário não forneceu cláusulas, injetamos parâmetros do template
+    const injectTemplateParams = (arr: any[]) => {
+      const reaj = contrato.reajusteIndice || 'IPCA';
+      const garTipo = contrato.garantiaTipo || 'Nenhuma';
+      const garDet = (contrato.garantiaDetalhes || '').trim();
+      const respIPTU = contrato.despesasIPTUResponsavel || 'Locatário';
+      const respCond = contrato.despesasCondominioResponsavel || 'Locatário';
+      return (arr || []).map((c: any) => {
+        let texto = c.conteudo || '';
+        const titulo = (c.titulo || '').toString();
+        // Reajuste: serviços têm cláusula Reajuste; locação usa "Aluguel, Encargos e Reajuste"
+        if (/reajuste/i.test(titulo)) {
+          if (!/índice/i.test(texto)) {
+            texto += `\n\nÍndice aplicado: ${reaj}.`;
+          }
+        }
+        if (/aluguel.*reajuste/i.test(titulo)) {
+          if (!/índice/i.test(texto)) {
+            texto += `\n\nReajuste anual pelo índice: ${reaj}.`;
+          }
+        }
+        // Garantias (locação)
+        if (/garantia/i.test(titulo)) {
+          if (garTipo && garTipo !== 'Nenhuma') {
+            texto += `\n\nGarantia ajustada: ${garTipo}${garDet ? ` — ${garDet}` : ''}.`;
+          } else if (!/garantia ajustada/i.test(texto)) {
+            texto += `\n\nGarantia ajustada: não se aplica.`;
+          }
+        }
+        // IPTU/Condomínio (locação)
+        if (titulo === 'IPTU, Condomínio e Outras Despesas') {
+          if (!/Responsáveis:\s*IPTU/i.test(texto)) {
+            texto += `\n\nResponsáveis: IPTU — ${respIPTU}; Condomínio — ${respCond}.`;
+          }
+        }
+        return { ...c, conteudo: texto };
+      });
+    };
+    const clauses = (Array.isArray(contrato.clausulas) && contrato.clausulas.length)
+      ? baseClauses
+      : injectTemplateParams(baseClauses);
     const style = `
       <style>
         :root { --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --bg:#ffffff; }
@@ -1103,16 +1156,98 @@ const Contratos: React.FC = () => {
                 </div>
               </div>
               
+              {/* Parâmetros do Template (opcional) */}
+              <div className="border rounded-lg p-3 space-y-3">
+                <div className="text-sm font-medium text-gray-700">Parâmetros do template</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Índice de reajuste</label>
+                    <select
+                      value={novoContrato.reajusteIndice || 'IPCA'}
+                      onChange={(e) => setNovoContrato(prev => ({ ...prev, reajusteIndice: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>IPCA</option>
+                      <option>IGP-M</option>
+                      <option>INCC</option>
+                      <option>Não aplicar</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Garantia</label>
+                    <select
+                      value={novoContrato.garantiaTipo || 'Nenhuma'}
+                      onChange={(e) => setNovoContrato(prev => ({ ...prev, garantiaTipo: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>Nenhuma</option>
+                      <option>Caução</option>
+                      <option>Fiador</option>
+                      <option>Seguro-fiança</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Detalhes da garantia (opcional)</label>
+                  <input
+                    type="text"
+                    value={novoContrato.garantiaDetalhes || ''}
+                    onChange={(e) => setNovoContrato(prev => ({ ...prev, garantiaDetalhes: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex.: caução de 3 aluguéis; fiador: nome/CPF; apólice nº ..."
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Responsável pelo IPTU</label>
+                    <select
+                      value={novoContrato.despesasIPTUResponsavel || 'Locatário'}
+                      onChange={(e) => setNovoContrato(prev => ({ ...prev, despesasIPTUResponsavel: e.target.value as any }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>Locatário</option>
+                      <option>Locador</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Responsável pelo Condomínio</label>
+                    <select
+                      value={novoContrato.despesasCondominioResponsavel || 'Locatário'}
+                      onChange={(e) => setNovoContrato(prev => ({ ...prev, despesasCondominioResponsavel: e.target.value as any }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>Locatário</option>
+                      <option>Locador</option>
+                    </select>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Esses parâmetros serão injetados automaticamente nas cláusulas padrão quando você não preencher suas próprias cláusulas.</p>
+              </div>
+
               {/* Objetivo do contrato */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo do contrato</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Objetivo do contrato</label>
+                  <button type="button" className="text-xs px-2 py-1 border rounded hover:bg-gray-50" onClick={() => {
+                    const tpl = getContractTemplate(novoContrato.tipo);
+                    setNovoObjeto(tpl.fallbackObjectText({ tipo: novoContrato.tipo }));
+                  }}>Carregar do template</button>
+                </div>
                 <textarea value={novoObjeto} onChange={(e) => setNovoObjeto(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} placeholder="Descreva o objeto do contrato" />
               </div>
               {/* Cláusulas dinâmicas */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-gray-700">Cláusulas</label>
-                  <button type="button" onClick={() => setNovoClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => {
+                      const tpl = getContractTemplate(novoContrato.tipo);
+                      const base = tpl.defaultClauses({ tipo: novoContrato.tipo });
+                      const mapped = base.map((b, idx) => ({ id: crypto.randomUUID(), titulo: b.titulo || `Cláusula ${idx+1}` , conteudo: b.conteudo || '', itens: [] as ClausulaItem[] }));
+                      setNovoClausulas(mapped);
+                    }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Carregar do template</button>
+                    <button type="button" onClick={() => setNovoClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {novoClausulas.map((cl, idx) => (
@@ -1429,16 +1564,98 @@ const Contratos: React.FC = () => {
                   )}
                 </div>
               </div>
+              {/* Parâmetros do Template (edição) */}
+              <div className="border rounded-lg p-3 space-y-3">
+                <div className="text-sm font-medium text-gray-700">Parâmetros do template</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Índice de reajuste</label>
+                    <select
+                      value={editContrato.reajusteIndice || 'IPCA'}
+                      onChange={(e) => setEditContrato(prev => ({ ...prev, reajusteIndice: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>IPCA</option>
+                      <option>IGP-M</option>
+                      <option>INCC</option>
+                      <option>Não aplicar</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Garantia</label>
+                    <select
+                      value={editContrato.garantiaTipo || 'Nenhuma'}
+                      onChange={(e) => setEditContrato(prev => ({ ...prev, garantiaTipo: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>Nenhuma</option>
+                      <option>Caução</option>
+                      <option>Fiador</option>
+                      <option>Seguro-fiança</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Detalhes da garantia (opcional)</label>
+                  <input
+                    type="text"
+                    value={editContrato.garantiaDetalhes || ''}
+                    onChange={(e) => setEditContrato(prev => ({ ...prev, garantiaDetalhes: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex.: caução de 3 aluguéis; fiador: nome/CPF; apólice nº ..."
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Responsável pelo IPTU</label>
+                    <select
+                      value={editContrato.despesasIPTUResponsavel || 'Locatário'}
+                      onChange={(e) => setEditContrato(prev => ({ ...prev, despesasIPTUResponsavel: e.target.value as any }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>Locatário</option>
+                      <option>Locador</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Responsável pelo Condomínio</label>
+                    <select
+                      value={editContrato.despesasCondominioResponsavel || 'Locatário'}
+                      onChange={(e) => setEditContrato(prev => ({ ...prev, despesasCondominioResponsavel: e.target.value as any }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option>Locatário</option>
+                      <option>Locador</option>
+                    </select>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Esses parâmetros serão injetados automaticamente nas cláusulas padrão quando você não preencher suas próprias cláusulas.</p>
+              </div>
+
               {/* Objetivo do contrato (edição) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo do contrato</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Objetivo do contrato</label>
+                  <button type="button" className="text-xs px-2 py-1 border rounded hover:bg-gray-50" onClick={() => {
+                    const tpl = getContractTemplate(editContrato.tipo);
+                    setEditObjeto(tpl.fallbackObjectText({ tipo: editContrato.tipo }));
+                  }}>Carregar do template</button>
+                </div>
                 <textarea value={editObjeto} onChange={(e) => setEditObjeto(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={3} placeholder="Descreva o objeto do contrato" />
               </div>
               {/* Cláusulas dinâmicas (edição) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-gray-700">Cláusulas</label>
-                  <button type="button" onClick={() => setEditClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => {
+                      const tpl = getContractTemplate(editContrato.tipo);
+                      const base = tpl.defaultClauses({ tipo: editContrato.tipo });
+                      const mapped = base.map((b, idx) => ({ id: crypto.randomUUID(), titulo: b.titulo || `Cláusula ${idx+1}` , conteudo: b.conteudo || '', itens: [] as ClausulaItem[] }));
+                      setEditClausulas(mapped);
+                    }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Carregar do template</button>
+                    <button type="button" onClick={() => setEditClausulas(prev => [...prev, { id: crypto.randomUUID(), titulo: `Cláusula ${prev.length+1}`, conteudo: '', itens: [] }])} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Adicionar cláusula</button>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {editClausulas.map((cl, idx) => (
