@@ -1665,43 +1665,43 @@ const Contratos: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
 
-    {/* Modais de Pré-visualização */}
-    {showSignaturePreview && (
-      <Modal open={showSignaturePreview} onOpenChange={setShowSignaturePreview}>
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">Pré-visualização da assinatura</h3>
-            <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowSignaturePreview(false)} aria-label="Fechar">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          {signaturePreviewUrl && (
-            <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
-              <img src={signaturePreviewUrl} alt="Assinatura" className="max-w-full h-auto" />
+      {/* Modais de Pré-visualização */}
+      {showSignaturePreview && (
+        <Modal open={showSignaturePreview} onOpenChange={setShowSignaturePreview}>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Pré-visualização da assinatura</h3>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowSignaturePreview(false)} aria-label="Fechar">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
-        </div>
-      </Modal>
-    )}
-    {showLogoPreview && (
-      <Modal open={showLogoPreview} onOpenChange={setShowLogoPreview}>
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">Pré-visualização da logo</h3>
-            <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowLogoPreview(false)} aria-label="Fechar">
-              <X className="w-5 h-5" />
-            </button>
+            {signaturePreviewUrl && (
+              <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
+                <img src={signaturePreviewUrl} alt="Assinatura" className="max-w-full h-auto" />
+              </div>
+            )}
           </div>
-          {logoPreviewUrl && (
-            <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
-              <img src={logoPreviewUrl} alt="Logo" className="max-w-full h-auto" />
+        </Modal>
+      )}
+      {showLogoPreview && (
+        <Modal open={showLogoPreview} onOpenChange={setShowLogoPreview}>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Pré-visualização da logo</h3>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowLogoPreview(false)} aria-label="Fechar">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
-        </div>
-      </Modal>
-    )}
+            {logoPreviewUrl && (
+              <div className="max-h-[70vh] overflow-auto border rounded bg-white p-3 flex justify-center">
+                <img src={logoPreviewUrl} alt="Logo" className="max-w-full h-auto" />
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 }
 
