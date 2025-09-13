@@ -1210,6 +1210,7 @@ const Contratos: React.FC = () => {
               </div>
               
               {/* Parâmetros do Template (opcional) */}
+              {novoContrato.tipo === 'Aluguel' && (
               <div className="border rounded-lg p-3 space-y-3">
                 <div className="text-sm font-medium text-gray-700">Parâmetros do template</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1276,6 +1277,7 @@ const Contratos: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500">Esses parâmetros serão injetados automaticamente nas cláusulas padrão quando você não preencher suas próprias cláusulas.</p>
               </div>
+              )}
 
               {/* Detalhes de Locação (Novo) */}
               {novoContrato.tipo === 'Aluguel' && (
@@ -1678,6 +1680,7 @@ const Contratos: React.FC = () => {
                 </div>
               </div>
               {/* Parâmetros do Template (edição) */}
+              {editContrato.tipo === 'Aluguel' && (
               <div className="border rounded-lg p-3 space-y-3">
                 <div className="text-sm font-medium text-gray-700">Parâmetros do template</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1744,7 +1747,7 @@ const Contratos: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500">Esses parâmetros serão injetados automaticamente nas cláusulas padrão quando você não preencher suas próprias cláusulas.</p>
               </div>
-
+              )}
               {/* Objetivo do contrato (edição) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
