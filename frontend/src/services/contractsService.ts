@@ -37,7 +37,8 @@ async function ensurePayer(ownerId: string, nome: string, documento?: string): P
   let query = supabase.from('rf_payers').select('id').eq('owner_id', ownerId).limit(1);
   if (name) query = query.eq('nome', name);
   if (doc) query = query.eq('documento', doc);
-  const { data: found, error } = await query.single();
+  // Quando não há resultado, .single() retorna 406; use .maybeSingle() para evitar erro
+  const { data: found, error } = await query.maybeSingle();
   if (!error && found) return found as { id: string };
 
   const { data: inserted, error: insErr } = await supabase

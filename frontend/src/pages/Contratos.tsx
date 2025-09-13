@@ -524,13 +524,13 @@ const Contratos: React.FC = () => {
         .label{color:var(--muted)}
         .field{display:flex; justify-content:space-between; gap:16px; border-bottom:1px dotted var(--border); padding:6px 0}
         .clause{margin-top:10px; line-height:1.6; text-align:justify}
-        .signatures{display:flex; justify-content:space-between; margin-top:48px}
-        .sig{width:48%; text-align:center}
+        .signatures{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin-top:48px}
+        .sig{width:48%; text-align:center; display:flex; flex-direction:column; justify-content:flex-end; min-height:120px}
         /* Aproxima a linha da assinatura para parecer feita à mão */
-        .sig .line{margin-top:8px; border-top:1px solid var(--border);}
+        .sig .line{margin-top:4px; border-top:1px solid var(--border);}
         .meta{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px}
-        /* Reduz a distância abaixo da assinatura */
-        .signature-img{max-height:80px; object-fit:contain; margin-bottom:4px}
+        /* Reduz a distância abaixo da assinatura e aproxima da linha */
+        .signature-img{max-height:80px; object-fit:contain; margin-bottom:2px}
         @media print{ body{margin:16px} }
       </style>
     `;

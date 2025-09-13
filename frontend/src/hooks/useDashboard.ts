@@ -56,32 +56,70 @@ export function useDashboard() {
       setLoading(true);
       setError(null);
 
-      // Buscar estatísticas de pagamentos; estatísticas de "rendas" ainda não disponíveis
-      const estatisticasPagamentos = await buscarEstatisticasPagamentos();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setStats({
+          receita_total: 0, receita_mes_atual: 0, receitas_pendentes: 0, receitas_pagas: 0,
+          total_receitas: 0, pagamentos_mes: 0, crescimento_receita: 0, crescimento_receitas: 0, crescimento_pagamentos: 0
+        });
+        setRecentActivity([]);
+        setLoading(false);
+        return;
+      }
 
-      // TODO: Implementar cálculos reais baseados nos dados
-      // Por enquanto, usar dados das estatísticas existentes
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+
+      // Buscar dados mínimos em paralelo para reduzir tempo de carregamento
+      const [incomesRes, paymentsRes] = await Promise.all([
+        supabase
+          .from('rf_incomes')
+          .select('id, valor, created_at, status')
+          .eq('owner_id', user.id),
+        supabase
+          .from('rf_payments')
+          .select('id, valor, pago_em, income_id, owner_id')
+          .eq('owner_id', user.id)
+      ]);
+
+      if (incomesRes.error) console.warn('Falha rf_incomes:', incomesRes.error.message);
+      if (paymentsRes.error) console.warn('Falha rf_payments:', paymentsRes.error.message);
+
+      const incomes = incomesRes.data || [];
+      const payments = (paymentsRes.data || []).map(p => ({
+        ...p,
+        pago_em: p.pago_em || p.created_at || null
+      }));
+
+      const receita_total = payments.reduce((sum, p:any) => sum + (Number(p.valor) || 0), 0);
+      const receita_mes_atual = payments
+        .filter((p:any) => (p.pago_em || '').slice(0,10) >= monthStart && (p.pago_em || '').slice(0,10) <= monthEnd)
+        .reduce((sum, p:any) => sum + (Number(p.valor) || 0), 0);
+      const pagamentos_mes = payments
+        .filter((p:any) => (p.pago_em || '').slice(0,10) >= monthStart && (p.pago_em || '').slice(0,10) <= monthEnd)
+        .length;
+
+      const total_receitas = incomes.length;
+      const distintosPagos = new Set((payments || []).map((p:any) => p.income_id).filter(Boolean));
+      const receitas_pagas = distintosPagos.size; // quantidade de rendas com ao menos um pagamento
+      const receitas_pendentes = Math.max(total_receitas - receitas_pagas, 0);
+
+      // Crescimentos: manter 0 até termos histórico (poderíamos comparar com mês anterior futuramente)
       const novasStats: DashboardStats = {
-        // Mapeia para campos existentes em ReceitasStats
-        receita_total: 0,
-        // Sem dados consolidados de rendas por enquanto
-        receita_mes_atual: 0,
-        receitas_pendentes: 0,
-        receitas_pagas: 0,
-        total_receitas: 0,
-        // Sem campo mensal em PagamentoStats; usar total_pagamentos como aproximação
-        pagamentos_mes: estatisticasPagamentos?.total_pagamentos || 0,
-        // Crescimentos não disponíveis com os tipos atuais; manter 0 até termos base histórica
+        receita_total,
+        receita_mes_atual,
+        receitas_pendentes,
+        receitas_pagas,
+        total_receitas,
+        pagamentos_mes,
         crescimento_receita: 0,
         crescimento_receitas: 0,
-        crescimento_pagamentos: 0
+        crescimento_pagamentos: 0,
       };
 
       setStats(novasStats);
-      
-      // TODO: Implementar busca de atividade recente real
       await buscarAtividadeRecente();
-      
     } catch (err) {
       console.error('Erro ao calcular estatísticas do dashboard:', err);
       setError('Erro ao carregar dados do dashboard');
@@ -119,7 +157,8 @@ export function useDashboard() {
       // Buscar últimos pagamentos (rf_payments) juntando valor e pago_em
       const { data: payments, error: payErr } = await supabase
         .from('rf_payments')
-        .select('id, valor, pago_em, created_at, income_id')
+        .select('id, valor, pago_em, created_at, income_id, owner_id')
+        .eq('owner_id', user.id)
         .order('pago_em', { ascending: false })
         .limit(5);
 

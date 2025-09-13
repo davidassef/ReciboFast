@@ -1016,6 +1016,7 @@ setEditValorInput('');
                   }}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p className="text-xs text-gray-500 mt-1">Informe 11 dígitos para CPF ou 14 para CNPJ. Formatação é aplicada automaticamente. Este campo é opcional.</p>
               </div>
               
               <div>
@@ -1285,6 +1286,7 @@ setEditValorInput('');
                   }}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p className="text-xs text-gray-500 mt-1">Informe 11 dígitos para CPF ou 14 para CNPJ. Formatação é aplicada automaticamente. Este campo é opcional.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
