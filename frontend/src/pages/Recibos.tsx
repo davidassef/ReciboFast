@@ -672,8 +672,9 @@ h1{font-size:22px;letter-spacing:.5px;margin:0}
 .row{display:flex;justify-content:space-between;gap:12px}
 .muted{color:var(--muted)}
 .signature{margin-top:32px;text-align:center}
-.signature img{max-height:80px;object-fit:contain;margin-bottom:0;display:block;margin-left:auto;margin-right:auto}
-.signature .line{border-top:1px solid var(--border);margin-top:8px}
+/* Aproxima a assinatura da linha para parecer feita à mão */
+.signature img{max-height:80px;object-fit:contain;margin-bottom:2px;display:block;margin-left:auto;margin-right:auto}
+.signature .line{border-top:1px solid var(--border);margin-top:4px}
 .center{text-align:center}
 </style>
 `;

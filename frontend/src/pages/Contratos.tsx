@@ -526,9 +526,11 @@ const Contratos: React.FC = () => {
         .clause{margin-top:10px; line-height:1.6; text-align:justify}
         .signatures{display:flex; justify-content:space-between; margin-top:48px}
         .sig{width:48%; text-align:center}
-        .sig .line{margin-top:56px; border-top:1px solid var(--border);}
+        /* Aproxima a linha da assinatura para parecer feita à mão */
+        .sig .line{margin-top:8px; border-top:1px solid var(--border);}
         .meta{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px}
-        .signature-img{max-height:80px; object-fit:contain; margin-bottom:12px}
+        /* Reduz a distância abaixo da assinatura */
+        .signature-img{max-height:80px; object-fit:contain; margin-bottom:4px}
         @media print{ body{margin:16px} }
       </style>
     `;
@@ -862,12 +864,18 @@ const Contratos: React.FC = () => {
                   <input
                     type="checkbox"
                     className="h-4 w-4"
-                    checked={novoEmitirOutro || !!novoContrato.issuerName}
-                    onChange={(e) => setNovoEmitirOutro(e.target.checked)}
+                    checked={novoEmitirOutro}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setNovoEmitirOutro(checked);
+                      if (!checked) {
+                        setNovoContrato(prev => ({ ...prev, issuerName: undefined, issuerDocumento: undefined }));
+                      }
+                    }}
                   />
                   Emitir em nome de outra pessoa
                 </label>
-                {(novoEmitirOutro || !!novoContrato.issuerName) && (
+                {novoEmitirOutro && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
@@ -1209,7 +1217,7 @@ const Contratos: React.FC = () => {
                   <input
                     type="checkbox"
                     className="h-4 w-4"
-                    checked={editEmitirOutro || !!editContrato.issuerName}
+                    checked={editEmitirOutro}
                     onChange={(e) => {
                       const checked = e.target.checked;
                       setEditEmitirOutro(checked);
@@ -1220,7 +1228,7 @@ const Contratos: React.FC = () => {
                   />
                   Emitir em nome de outra pessoa
                 </label>
-                {(editEmitirOutro || !!editContrato.issuerName) && (
+                {editEmitirOutro && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nome do emissor</label>
