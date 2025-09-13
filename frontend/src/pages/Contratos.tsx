@@ -58,6 +58,11 @@ interface Contrato {
   garantiaDetalhes?: string;
   despesasIPTUResponsavel?: 'Locatário' | 'Locador';
   despesasCondominioResponsavel?: 'Locatário' | 'Locador';
+  // Campos específicos de Locação (exibição e formatação)
+  locacaoCategoria?: 'Comercial' | 'Residencial';
+  locationCity?: string; // Ex.: Boa Viagem
+  locationUF?: string;   // Ex.: CE
+  dataTextual?: string;  // Ex.: 10 de Agosto de 2017
 }
 
 const _mockContratos: Contrato[] = [
@@ -205,7 +210,12 @@ const Contratos: React.FC = () => {
     garantiaTipo: 'Nenhuma',
     garantiaDetalhes: '',
     despesasIPTUResponsavel: 'Locatário',
-    despesasCondominioResponsavel: 'Locatário'
+    despesasCondominioResponsavel: 'Locatário',
+    // detalhes de locação
+    locacaoCategoria: 'Comercial',
+    locationCity: '',
+    locationUF: '',
+    dataTextual: ''
   });
   const [showViewContrato, setShowViewContrato] = useState(false);
   const [contratoSelecionado, setContratoSelecionado] = useState<Contrato | null>(null);
@@ -467,7 +477,12 @@ const Contratos: React.FC = () => {
         issuerName: created.issuerName || (novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined),
         issuerDocumento: created.issuerDocumento || (novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined),
         recurrenceEnabled: !!created.recurrenceEnabled,
-        recurrenceDay: created.recurrenceDay || ((typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined)
+        recurrenceDay: created.recurrenceDay || ((typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined),
+        // detalhes de locação (apenas local)
+        locacaoCategoria: novoContrato.locacaoCategoria || 'Comercial',
+        locationCity: (novoContrato.locationCity || '').trim() || undefined,
+        locationUF: (novoContrato.locationUF || '').trim().toUpperCase() || undefined,
+        dataTextual: (novoContrato.dataTextual || '').trim() || undefined
       };
       setContratos(prev => [novo, ...prev]);
     } catch (err) {
@@ -490,12 +505,17 @@ const Contratos: React.FC = () => {
         issuerName: novoEmitirOutro ? ((novoContrato.issuerName || '').trim() || undefined) : undefined,
         issuerDocumento: novoEmitirOutro ? ((novoContrato.issuerDocumento || '').trim() || undefined) : undefined,
         recurrenceEnabled: !!novoContrato.recurrenceEnabled,
-        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined
+        recurrenceDay: (typeof novoContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, novoContrato.recurrenceDay as number)) : undefined,
+        // detalhes de locação (apenas local)
+        locacaoCategoria: novoContrato.locacaoCategoria || 'Comercial',
+        locationCity: (novoContrato.locationCity || '').trim() || undefined,
+        locationUF: (novoContrato.locationUF || '').trim().toUpperCase() || undefined,
+        dataTextual: (novoContrato.dataTextual || '').trim() || undefined
       };
       setContratos(prev => [novo, ...prev]);
     }
     setShowNovoContrato(false);
-    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined, recurrenceEnabled: false, recurrenceDay: undefined, reajusteIndice: 'IPCA', garantiaTipo: 'Nenhuma', garantiaDetalhes: '', despesasIPTUResponsavel: 'Locatário', despesasCondominioResponsavel: 'Locatário' });
+    setNovoContrato({ numero: '', cliente: '', valor: 0, dataInicio: '', dataFim: '', status: 'ativo', tipo: 'Aluguel', descricao: '', documento: '', signatureId: undefined, signatureUrl: undefined, recurrenceEnabled: false, recurrenceDay: undefined, reajusteIndice: 'IPCA', garantiaTipo: 'Nenhuma', garantiaDetalhes: '', despesasIPTUResponsavel: 'Locatário', despesasCondominioResponsavel: 'Locatário', locacaoCategoria: 'Comercial', locationCity: '', locationUF: '', dataTextual: '' });
     setNovoValorInput('');
     setNovoObjeto('');
     setNovoClausulas([]);
@@ -526,7 +546,11 @@ const Contratos: React.FC = () => {
   const generatePrintableContratoHtml = (contrato: Contrato) => {
     const logoUrl = contrato.useLogo ? (contrato.logoUrl || defaultLogoUrl) : null;
     const tpl = getContractTemplate(contrato.tipo);
-    const titulo = tpl.title(contrato.numero).toUpperCase();
+    const isLocacao = (tpl as any)?.key === 'locacao' || /alug/i.test(contrato.tipo || '');
+    const categoriaLoc = (contrato.locacaoCategoria || 'Comercial').toUpperCase();
+    const titulo = isLocacao
+      ? `CONTRATO PARTICULAR DE LOCAÇÃO DE IMÓVEL ${categoriaLoc}`
+      : tpl.title(contrato.numero).toUpperCase();
     const objetoText = (contrato.objeto || contrato.descricao || tpl.fallbackObjectText({ tipo: contrato.tipo }));
     const baseClauses = Array.isArray(contrato.clausulas) && contrato.clausulas.length
       ? contrato.clausulas
@@ -645,6 +669,9 @@ const Contratos: React.FC = () => {
               </div>
             `).join('')}
           </div>`: ''}
+          ${isLocacao && (contrato.locationCity || contrato.locationUF || contrato.dataTextual) ? `
+          <div class="subtitle" style="margin-top:16px">${[contrato.locationCity, contrato.locationUF?.toUpperCase()].filter(Boolean).join(' – ')}${contrato.dataTextual ? `, ${contrato.dataTextual}` : ''}</div>
+          `:''}
           <div class="signatures">
             <div class="sig">
               <div class="line"></div>
@@ -754,7 +781,12 @@ const Contratos: React.FC = () => {
         issuerName: updated.issuerName || ((editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined),
         issuerDocumento: updated.issuerDocumento || ((editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined),
         recurrenceEnabled: !!updated.recurrenceEnabled,
-        recurrenceDay: updated.recurrenceDay || ((typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay)
+        recurrenceDay: updated.recurrenceDay || ((typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay),
+        // detalhes de locação (apenas local)
+        locacaoCategoria: (editContrato.locacaoCategoria as any) || c.locacaoCategoria,
+        locationCity: (editContrato.locationCity || '').trim() || c.locationCity,
+        locationUF: ((editContrato.locationUF || '').trim().toUpperCase()) || c.locationUF,
+        dataTextual: (editContrato.dataTextual || '').trim() || c.dataTextual
       } : c));
     } catch (err) {
       console.warn('Falha ao atualizar contrato no Supabase. Atualizando local.', err);
@@ -775,7 +807,12 @@ const Contratos: React.FC = () => {
         issuerName: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerName || c.issuerName) : undefined,
         issuerDocumento: (editEmitirOutro || editContrato.issuerName || editContrato.issuerDocumento) ? (editContrato.issuerDocumento || c.issuerDocumento) : undefined,
         recurrenceEnabled: !!editContrato.recurrenceEnabled,
-        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay
+        recurrenceDay: (typeof editContrato.recurrenceDay === 'number') ? Math.min(31, Math.max(1, editContrato.recurrenceDay as number)) : c.recurrenceDay,
+        // detalhes de locação (apenas local)
+        locacaoCategoria: (editContrato.locacaoCategoria as any) || c.locacaoCategoria,
+        locationCity: (editContrato.locationCity || '').trim() || c.locationCity,
+        locationUF: ((editContrato.locationUF || '').trim().toUpperCase()) || c.locationUF,
+        dataTextual: (editContrato.dataTextual || '').trim() || c.dataTextual
       } : c));
     }
     setShowEditContrato(false);
@@ -1239,6 +1276,59 @@ const Contratos: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500">Esses parâmetros serão injetados automaticamente nas cláusulas padrão quando você não preencher suas próprias cláusulas.</p>
               </div>
+
+              {/* Detalhes de Locação (Novo) */}
+              {novoContrato.tipo === 'Aluguel' && (
+                <div className="border rounded-lg p-3 space-y-3">
+                  <div className="text-sm font-medium text-gray-700">Detalhes de locação</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Categoria</label>
+                      <select
+                        value={novoContrato.locacaoCategoria || 'Comercial'}
+                        onChange={(e) => setNovoContrato(prev => ({ ...prev, locacaoCategoria: e.target.value as any }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option>Comercial</option>
+                        <option>Residencial</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Cidade</label>
+                      <input
+                        type="text"
+                        value={novoContrato.locationCity || ''}
+                        onChange={(e) => setNovoContrato(prev => ({ ...prev, locationCity: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ex.: Boa Viagem"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">UF</label>
+                      <input
+                        type="text"
+                        value={(novoContrato.locationUF || '').toUpperCase()}
+                        onChange={(e) => setNovoContrato(prev => ({ ...prev, locationUF: e.target.value.toUpperCase().slice(0, 2) }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ex.: CE"
+                        maxLength={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Data textual</label>
+                      <input
+                        type="text"
+                        value={novoContrato.dataTextual || ''}
+                        onChange={(e) => setNovoContrato(prev => ({ ...prev, dataTextual: e.target.value }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus-border-transparent"
+                        placeholder="Ex.: 10 de Agosto de 2017"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Objetivo do contrato */}
               <div>
